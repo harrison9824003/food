@@ -2,23 +2,27 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        //
+        // 單筆資源直接回傳物件、不包 { data: ... }；分頁列表仍固定帶 data + meta + links
+        JsonResource::withoutWrapping();
+
+        // 後台登入：同一 email + IP 每分鐘 5 次，擋暴力破解。
+        // key 同時含 IP：只用 email 的話，任何人都能用別人的 email 亂試來鎖住對方帳號。
+        RateLimiter::for('admin-login', fn (Request $request) => Limit::perMinute(5)
+            ->by(strtolower((string) $request->input('email')).'|'.$request->ip()));
     }
 }
