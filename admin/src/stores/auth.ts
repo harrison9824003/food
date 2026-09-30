@@ -9,7 +9,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => token.value !== null)
   const role = computed<UserRole | null>(() => user.value?.role ?? null)
+  const isHq = computed(() => role.value === 'hq_admin')
   const canManageUsers = computed(() => role.value === 'hq_admin' || role.value === 'store_manager')
+
+  /**
+   * 是否能修改指定門市的設定（營業時間、桌位…）。
+   * 只影響按鈕要不要顯示；真正的權限由後端 StorePolicy 把關。
+   */
+  function canManageStore(storeId: number): boolean {
+    if (role.value === 'hq_admin') {
+      return true
+    }
+    return role.value === 'store_manager' && user.value?.store_id === storeId
+  }
 
   function clear(): void {
     token.value = null
@@ -40,11 +52,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // token 失效時清狀態；導頁由 router 的 guard 負責
+  // token 失效時清狀態並回登入頁
   setUnauthenticatedHandler(() => {
     clear()
     window.location.assign(`${import.meta.env.BASE_URL}login`)
   })
 
-  return { token, user, isLoggedIn, role, canManageUsers, login, fetchMe, logout, clear }
+  return { token, user, isLoggedIn, role, isHq, canManageUsers, canManageStore, login, fetchMe, logout, clear }
 })

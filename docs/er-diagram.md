@@ -35,8 +35,8 @@ erDiagram
     store_business_hours {
         bigint store_id FK
         tinyint weekday "UNIQUE(store_id, weekday)"
-        time open_time
-        time close_time
+        time open_time "公休日為 NULL"
+        time close_time "公休日為 NULL"
         smallint slot_minutes
         bool is_closed
     }

@@ -68,7 +68,10 @@ export function errorMessage(error: unknown, fallback = '發生錯誤，請稍�
     if (!error.response) {
       return '無法連線到伺服器'
     }
-    return error.response.data?.message ?? fallback
+    const body = error.response.data
+    // 驗證失敗時，「資料驗證失敗」幫助不大，直接顯示第一個欄位的具體原因
+    const firstFieldError = body?.code === 'VALIDATION_FAILED' ? Object.values(body.errors ?? {})[0]?.[0] : undefined
+    return firstFieldError ?? body?.message ?? fallback
   }
   return fallback
 }

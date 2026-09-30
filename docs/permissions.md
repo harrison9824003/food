@@ -50,6 +50,15 @@ Sanctum **Bearer Token**：登入後取得 token，之後放在 `Authorization: 
 | `POST /api/admin/users` | 建立 |
 | `PATCH /api/admin/users/{id}` | 編輯／停用（不提供刪除，只停用，保留稽核軌跡） |
 
+## 門市與門市設定權限
+
+門市、營業時間、公休日、桌位、時段名額的權限矩陣、API 與規則，見 [store-settings.md](store-settings.md)。
+實作於 `app/Policies/StorePolicy.php`，重點：
+
+- 店長只能改**自己門市**的地址、電話、開放規則與各項設定；**名稱、每人訂金、啟用／停用只有總部能改**。
+- 店員對自己門市的設定唯讀。
+- 嘗試修改無權限欄位時明確回 `403`，不會默默忽略欄位讓使用者誤以為成功。
+
 ## 統一錯誤格式
 
 ```json
@@ -63,6 +72,8 @@ Sanctum **Bearer Token**：登入後取得 token，之後放在 `Authorization: 
 | 403 | `FORBIDDEN` | 已登入但無權限 |
 | 403 | `ACCOUNT_DISABLED` | 帳號已停用 |
 | 404 | `NOT_FOUND` | 找不到資源 |
+| 409 | `CLOSED_DATE_HAS_RESERVATIONS` | 設定公休日，但該日已有訂位 |
+| 409 | `CAPACITY_BELOW_BOOKED` | 時段名額調得比已訂人數還少 |
 | 422 | `VALIDATION_FAILED` | 驗證失敗，`errors` 為欄位錯誤 |
 | 429 | `TOO_MANY_REQUESTS` | 被限流 |
 | 500 | `SERVER_ERROR` | 未預期錯誤（正式環境不外洩內部訊息） |

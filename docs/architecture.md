@@ -49,6 +49,12 @@ while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; d
 ```
 不需要 cron daemon，日誌直接出現在 `docker logs food_scheduler`。
 
+目前的排程（`backend/routes/console.php`）：
+
+| 排程 | 時間 | 說明 |
+|---|---|---|
+| `slots:generate` | 每天 00:10（`Asia/Taipei`） | 為啟用中的門市補上新進入開放期間的可訂時段，冪等；見 [store-settings.md](store-settings.md) |
+
 ### queue 和 scheduler 獨立容器
 各自有不同重啟語意。重啟 php-fpm pool 不會中斷長時間執行的 queue job。
 

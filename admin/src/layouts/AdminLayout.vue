@@ -8,6 +8,8 @@ const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 
+// 進到 /stores/3 時，選單仍要停在「門市」
+const activeMenu = computed(() => (route.path.startsWith('/stores') ? '/stores' : route.path))
 const roleLabel = computed(() => (auth.role ? ROLE_LABELS[auth.role] : ''))
 const storeLabel = computed(() => auth.user?.store?.name ?? '全部門市')
 
@@ -22,8 +24,9 @@ async function logout(): Promise<void> {
     <el-aside width="200px" class="aside">
       <div class="brand">門市管理後台</div>
       <!-- 選單依角色顯示；只是為了體驗，真正的權限在後端 -->
-      <el-menu :default-active="route.path" router class="menu">
+      <el-menu :default-active="activeMenu" router class="menu">
         <el-menu-item index="/">總覽</el-menu-item>
+        <el-menu-item index="/stores">門市</el-menu-item>
         <el-menu-item v-if="auth.canManageUsers" index="/users">帳號管理</el-menu-item>
       </el-menu>
     </el-aside>

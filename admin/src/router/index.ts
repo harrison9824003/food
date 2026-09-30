@@ -34,6 +34,18 @@ const router = createRouter({
           meta: { title: '總覽' },
         },
         {
+          path: 'stores',
+          name: 'stores',
+          component: () => import('@/views/StoresView.vue'),
+          meta: { title: '門市' },
+        },
+        {
+          path: 'stores/:id(\\d+)',
+          name: 'store-settings',
+          component: () => import('@/views/StoreSettingsView.vue'),
+          meta: { title: '門市設定' },
+        },
+        {
           path: 'users',
           name: 'users',
           component: () => import('@/views/UsersView.vue'),

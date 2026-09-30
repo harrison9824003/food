@@ -35,8 +35,61 @@ export interface ApiErrorBody {
   errors: Record<string, string[]>
 }
 
+export interface Store {
+  id: number
+  name: string
+  address: string | null
+  phone: string | null
+  is_active: boolean
+  advance_days: number
+  cutoff_minutes: number
+  slot_capacity_default: number
+  deposit_per_person: number
+}
+
+/** 週日=0 … 週六=6，與後端一致 */
+export interface BusinessHour {
+  weekday: number
+  is_closed: boolean
+  open_time: string | null
+  close_time: string | null
+  slot_minutes: number
+}
+
+export interface ClosedDate {
+  id: number
+  closed_date: string
+  reason: string | null
+}
+
+export interface DiningTable {
+  id: number
+  store_id: number
+  code: string
+  min_seats: number
+  max_seats: number
+  is_combinable: boolean
+  is_active: boolean
+}
+
+export interface Slot {
+  id: number
+  slot_date: string
+  start_time: string
+  capacity: number
+  booked: number
+  remaining: number
+}
+
+export interface SlotSyncResult {
+  created: number
+  deleted: number
+}
+
 export const ROLE_LABELS: Record<UserRole, string> = {
   hq_admin: '總部管理員',
   store_manager: '店長',
   staff: '店員',
 }
+
+export const WEEKDAY_LABELS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'] as const
