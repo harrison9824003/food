@@ -56,6 +56,7 @@ WORKDIR /var/www/backend
 FROM base AS development
 
 COPY php.ini /usr/local/etc/php/conf.d/99-custom.ini
+COPY fpm-pool.conf /usr/local/etc/php-fpm.d/zz-pool.conf
 
 USER www-data
 
