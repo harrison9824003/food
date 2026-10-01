@@ -1,0 +1,24 @@
+﻿[
+    {
+        "Strategy":  "atomic",
+        "Requests":  2112,
+        "RPS":  46.9,
+        "Created":  424,
+        "Rejected":  0,
+        "Errors":  0,
+        "ReadP95":  1472.1,
+        "WriteAvg":  748,
+        "WriteP95":  1253.5
+    },
+    {
+        "Strategy":  "pessimistic",
+        "Requests":  2213,
+        "RPS":  49,
+        "Created":  417,
+        "Rejected":  0,
+        "Errors":  0,
+        "ReadP95":  1456.9,
+        "WriteAvg":  685,
+        "WriteP95":  1291.7
+    }
+]

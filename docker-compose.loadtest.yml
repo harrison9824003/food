@@ -1,0 +1,27 @@
+# 壓測用的覆蓋設定，與 docker-compose.yml 疊加使用：
+#
+#   docker compose -f docker-compose.yml -f docker-compose.loadtest.yml up -d php-fpm
+#   docker compose -f docker-compose.yml -f docker-compose.loadtest.yml run --rm k6 run /scripts/oversell.js
+#
+# 為什麼不直接改 backend/.env：這些設定（開放用標頭切換策略、關閉訂位限流）只該在壓測時存在，
+# 平常開發不應該帶著。用疊加檔的話，不加 -f docker-compose.loadtest.yml 就完全不會生效。
+
+services:
+  php-fpm:
+    environment:
+      BOOKING_ALLOW_STRATEGY_HEADER: "true"
+      BOOKING_CREATE_RATE_LIMIT: "10000000"
+      BOOKING_PUBLIC_READ_RATE_LIMIT: "10000000"
+      # 壓測不需要除錯頁面與 debug 日誌，避免它們干擾延遲數字
+      APP_DEBUG: "false"
+      LOG_LEVEL: warning
+
+  k6:
+    image: grafana/k6:latest
+    profiles: ["k6"]
+    entrypoint: ["k6"]
+    volumes:
+      - ./loadtest/scripts:/scripts:ro
+      - ./loadtest/results:/results
+    networks:
+      - food_net

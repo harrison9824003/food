@@ -26,6 +26,7 @@ async function logout(): Promise<void> {
       <!-- 選單依角色顯示；只是為了體驗，真正的權限在後端 -->
       <el-menu :default-active="activeMenu" router class="menu">
         <el-menu-item index="/">總覽</el-menu-item>
+        <el-menu-item index="/reservations">訂單</el-menu-item>
         <el-menu-item index="/stores">門市</el-menu-item>
         <el-menu-item v-if="auth.canManageUsers" index="/users">帳號管理</el-menu-item>
       </el-menu>

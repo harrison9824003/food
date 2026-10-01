@@ -22,6 +22,8 @@ mock-erp/node_modules/
 # Load test results
 loadtest/results/*.json
 loadtest/results/*.html
+# 彙整後的結果當作證據保留（逐次細項仍忽略）
+!loadtest/results/*-summary.json
 
 # OS
 .DS_Store

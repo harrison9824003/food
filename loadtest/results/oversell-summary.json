@@ -1,0 +1,41 @@
+﻿[
+    {
+        "Strategy":  "unsafe",
+        "Created":  100,
+        "Full":  0,
+        "NoTable":  300,
+        "Errors":  0,
+        "Guests":  200,
+        "Capacity":  50,
+        "Oversold":  150,
+        "Drift":  178,
+        "RPS":  47.9,
+        "P95ms":  3305.8
+    },
+    {
+        "Strategy":  "atomic",
+        "Created":  25,
+        "Full":  375,
+        "NoTable":  0,
+        "Errors":  0,
+        "Guests":  50,
+        "Capacity":  50,
+        "Oversold":  0,
+        "Drift":  0,
+        "RPS":  97,
+        "P95ms":  1682.2
+    },
+    {
+        "Strategy":  "pessimistic",
+        "Created":  25,
+        "Full":  375,
+        "NoTable":  0,
+        "Errors":  0,
+        "Guests":  50,
+        "Capacity":  50,
+        "Oversold":  0,
+        "Drift":  0,
+        "RPS":  97.7,
+        "P95ms":  1782.1
+    }
+]

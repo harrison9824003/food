@@ -86,6 +86,40 @@ export interface SlotSyncResult {
   deleted: number
 }
 
+export type ReservationStatus = 'pending_payment' | 'confirmed' | 'arrived' | 'no_show' | 'cancelled' | 'expired'
+
+export interface AdminReservation {
+  id: number
+  code: string
+  status: ReservationStatus
+  status_label: string
+  /** 目前可手動變更成哪些狀態（後端依狀態轉換表算好） */
+  allowed_statuses: Array<'arrived' | 'no_show' | 'cancelled'>
+  payment_status: string
+  deposit_amount: number
+  customer_name: string
+  phone: string
+  email: string | null
+  party_size: number
+  note: string | null
+  date: string
+  time: string
+  store: StoreSummary
+  tables: string[]
+  created_at: string
+}
+
+export const STATUS_OPTIONS: Array<{ value: ReservationStatus; label: string }> = [
+  { value: 'pending_payment', label: '待付款' },
+  { value: 'confirmed', label: '已確認' },
+  { value: 'arrived', label: '已到' },
+  { value: 'no_show', label: '未到' },
+  { value: 'cancelled', label: '已取消' },
+  { value: 'expired', label: '已逾時' },
+]
+
+export const STATUS_ACTION_LABELS = { arrived: '已到', no_show: '未到', cancelled: '取消' } as const
+
 export const ROLE_LABELS: Record<UserRole, string> = {
   hq_admin: '總部管理員',
   store_manager: '店長',

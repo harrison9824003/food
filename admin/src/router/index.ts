@@ -34,6 +34,12 @@ const router = createRouter({
           meta: { title: '總覽' },
         },
         {
+          path: 'reservations',
+          name: 'reservations',
+          component: () => import('@/views/ReservationsView.vue'),
+          meta: { title: '訂單' },
+        },
+        {
           path: 'stores',
           name: 'stores',
           component: () => import('@/views/StoresView.vue'),

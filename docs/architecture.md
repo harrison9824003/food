@@ -14,6 +14,20 @@
 | food_admin | node:20-alpine | 5174 | Vue 3 管理後台 Vite dev server |
 | food_mock_erp | node:20-alpine（自建） | 3000 | Express 模擬 POS/ERP |
 
+### 壓測用的疊加設定
+
+`docker-compose.loadtest.yml` 與 `docker-compose.yml` 疊加使用（`-f docker-compose.yml -f docker-compose.loadtest.yml`），
+會覆蓋 `php-fpm` 的環境變數（開放策略標頭、關閉限流）並加入 `k6` 服務（`profiles: [k6]`，只有明確 `run` 時才啟動）。
+不加 `-f` 時完全不生效，平常開發不會帶著這些設定。詳見 [loadtest.md](loadtest.md)。
+
+`php-fpm` 的進程池在 `docker/php/fpm-pool.conf` 調高為 `pm.max_children = 40`（映像預設只有 5，同一時間最多處理 5 個請求，
+壓測會變成把並發壓在 5）。
+
+### 開發環境的 Vite 檔案監看
+
+Windows 上 Docker 的 bind mount 不會傳遞檔案變更事件（inotify），Vite 收不到通知就會一直送快取裡的舊版程式碼。
+`frontend` 與 `admin` 的 `vite.config.ts` 都設了 `server.watch.usePolling`，改檔案後不必重啟。
+
 ## nginx 路由規則
 
 ```
