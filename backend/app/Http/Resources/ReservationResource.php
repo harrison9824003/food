@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+/**
+ * 給顧客看的訂位資料。
+ *
+ * @mixin \App\Models\Reservation
+ */
+class ReservationResource extends JsonResource
+{
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(Request $request): array
+    {
+        return [
+            'code' => $this->code,
+            'status' => $this->status->value,
+            'status_label' => $this->status->label(),
+            'payment_status' => $this->payment_status->value,
+            'deposit_amount' => $this->deposit_amount,
+            'hold_expires_at' => $this->hold_expires_at?->toIso8601String(),
+            'customer_name' => $this->customer_name,
+            'party_size' => $this->party_size,
+            'note' => $this->note,
+            'date' => $this->slot->slot_date->toDateString(),
+            'time' => substr($this->slot->start_time, 0, 5),
+            'store' => [
+                'id' => $this->store->id,
+                'name' => $this->store->name,
+                'address' => $this->store->address,
+                'phone' => $this->store->phone,
+            ],
+        ];
+    }
+}

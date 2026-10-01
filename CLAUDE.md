@@ -90,7 +90,7 @@ docker-compose.yml
 1. [x] Docker Compose 環境、Laravel 骨架、資料表 Migration、ER 圖
 2. [x] 後台登入、角色權限
 3. [x] 門市管理、桌位、時段、開放規則設定（後台）；後台帳號管理表單（設計與規則見 `docs/store-settings.md`）
-4. [ ] 前台訂位流程 + 防超賣 + k6 壓測（展示點 A）
+4. [x] 前台訂位流程 + 防超賣 + k6 壓測（展示點 A）；後台訂單列表與狀態變更（設計見 `docs/booking.md`、壓測結果見 `docs/loadtest.md`；選餐延到里程碑 5）
 5. [ ] 綠界金流、暫時保留與逾時釋放、冪等回呼（展示點 B）
 6. [ ] 簡訊驗證碼、mock-erp、Outbox、退款流程（展示點 C）
 7. [ ] 部署到 Linux、日誌、故障排除手冊、門市操作說明

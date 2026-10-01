@@ -4,11 +4,38 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BusinessHourController;
 use App\Http\Controllers\Admin\ClosedDateController;
 use App\Http\Controllers\Admin\DiningTableController;
+use App\Http\Controllers\Admin\ReservationController as AdminReservationController;
 use App\Http\Controllers\Admin\SlotController;
 use App\Http\Controllers\Admin\StoreController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Customer\ReservationController as CustomerReservationController;
+use App\Http\Controllers\Customer\StoreController as CustomerStoreController;
 use Illuminate\Support\Facades\Route;
 
+/*
+|--------------------------------------------------------------------------
+| 顧客端（不需登入）
+|--------------------------------------------------------------------------
+*/
+Route::middleware('throttle:public-read')->group(function () {
+    Route::get('stores', [CustomerStoreController::class, 'index']);
+    Route::get('stores/{store}/calendar', [CustomerStoreController::class, 'calendar']);
+    Route::get('stores/{store}/availability', [CustomerStoreController::class, 'availability']);
+});
+
+Route::post('reservations', [CustomerReservationController::class, 'store'])->middleware('throttle:booking-create');
+
+// 查詢與取消要猜「代號 + 手機」才能命中，限流擋暴力嘗試
+Route::middleware('throttle:reservation-lookup')->group(function () {
+    Route::post('reservations/lookup', [CustomerReservationController::class, 'lookup']);
+    Route::post('reservations/cancel', [CustomerReservationController::class, 'cancel']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| 後台
+|--------------------------------------------------------------------------
+*/
 Route::prefix('admin')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:admin-login');
 
@@ -38,5 +65,8 @@ Route::prefix('admin')->group(function () {
             Route::post('slots/generate', [SlotController::class, 'generate']);
             Route::patch('slots/{slot}', [SlotController::class, 'update']);
         });
+
+        Route::get('reservations', [AdminReservationController::class, 'index']);
+        Route::patch('reservations/{reservation}/status', [AdminReservationController::class, 'updateStatus']);
     });
 });

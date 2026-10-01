@@ -24,5 +24,10 @@ class AppServiceProvider extends ServiceProvider
         // key 同時含 IP：只用 email 的話，任何人都能用別人的 email 亂試來鎖住對方帳號。
         RateLimiter::for('admin-login', fn (Request $request) => Limit::perMinute(5)
             ->by(strtolower((string) $request->input('email')).'|'.$request->ip()));
+
+        // 顧客端：以 IP 限流，擋機器人洗訂位與暴力猜訂位代號
+        RateLimiter::for('booking-create', fn (Request $request) => Limit::perMinute(config('booking.create_rate_limit'))->by($request->ip()));
+        RateLimiter::for('reservation-lookup', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
+        RateLimiter::for('public-read', fn (Request $request) => Limit::perMinute(config('booking.public_read_rate_limit'))->by($request->ip()));
     }
 }
