@@ -97,6 +97,10 @@ erDiagram
         string ecpay_trade_no UK "冪等依據"
         int amount
         string status
+        bool needs_refund "錢已收到但訂位無法成立"
+        string refund_reason
+        string failure_reason
+        string confirmed_via "notify / reconcile / simulator"
     }
     refunds {
         bigint id PK

@@ -58,6 +58,16 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // 金流專用日誌：通知原文、驗章失敗、冪等略過、晚到付款…
+        // 與一般日誌分開，對帳或爭議時只需要翻這一個檔案。request_id 由 Log::shareContext 自動帶入。
+        'payment' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payment.log'),
+            'level' => env('PAYMENT_LOG_LEVEL', 'debug'),
+            'days' => env('PAYMENT_LOG_DAYS', 60),
+            'replace_placeholders' => true,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

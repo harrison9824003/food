@@ -97,6 +97,18 @@ export interface AdminReservation {
   allowed_statuses: Array<'arrived' | 'no_show' | 'cancelled'>
   payment_status: string
   deposit_amount: number
+  /** 錢已收到但訂位無法成立（晚到付款、重複付款…），等退款流程處理 */
+  needs_refund?: boolean
+  payments?: Array<{
+    merchant_trade_no: string
+    status: string
+    amount: number
+    needs_refund: boolean
+    refund_reason: string | null
+    confirmed_via: string | null
+    paid_at: string | null
+  }>
+  items?: Array<{ name: string; quantity: number }>
   customer_name: string
   phone: string
   email: string | null
@@ -117,6 +129,55 @@ export const STATUS_OPTIONS: Array<{ value: ReservationStatus; label: string }> 
   { value: 'cancelled', label: '已取消' },
   { value: 'expired', label: '已逾時' },
 ]
+
+export interface MenuImage {
+  id: number
+  url: string
+  thumb_url: string
+  width: number
+  height: number
+}
+
+export interface MenuCategory {
+  id: number
+  name: string
+  sort_order: number
+  is_active: boolean
+  items_count?: number
+}
+
+export interface MenuItem {
+  id: number
+  category_id: number | null
+  name: string
+  description: string | null
+  price: number
+  sort_order: number
+  is_active: boolean
+  /** 暫時售完：仍顯示在菜單上，但顧客不能預點 */
+  is_sold_out: boolean
+  images: MenuImage[]
+}
+
+/** 與後端 config/menu.php 一致；前端只做提示，真正的檢查在伺服器 */
+export const MENU_IMAGE_LIMITS = { maxImages: 8, maxMegabytes: 5, accept: 'image/jpeg,image/png,image/webp' } as const
+
+export const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  not_required: '免訂金',
+  unpaid: '未付款',
+  pending: '付款處理中',
+  paid: '已付款',
+  failed: '付款失敗',
+  refunding: '退款中',
+  refunded: '已退款',
+}
+
+export const REFUND_REASON_LABELS: Record<string, string> = {
+  LATE_PAYMENT_SLOT_TAKEN: '逾時後才付款，且座位已被訂走',
+  DUPLICATE_PAYMENT: '重複付款',
+  PAID_AFTER_CANCEL: '取消後才付款',
+  UNEXPECTED_STATE: '訂位狀態異常',
+}
 
 export const STATUS_ACTION_LABELS = { arrived: '已到', no_show: '未到', cancelled: '取消' } as const
 

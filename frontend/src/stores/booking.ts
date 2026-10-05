@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, reactive, toRefs, watch } from 'vue'
-import type { Reservation } from '@/types/api'
+import type { CartLine, Reservation } from '@/types/api'
 
 const STORAGE_KEY = 'booking_draft_v1'
 
@@ -16,6 +16,8 @@ interface Draft {
   phone: string
   email: string
   note: string
+  /** 預點的餐點（選填、不計費） */
+  cart: CartLine[]
   /** 訂位成功後的結果，供結果頁顯示；重新整理後仍在 */
   result: Reservation | null
 }
@@ -33,6 +35,7 @@ function emptyDraft(): Draft {
     phone: '',
     email: '',
     note: '',
+    cart: [],
     result: null,
   }
 }
@@ -80,6 +83,7 @@ export const useBookingStore = defineStore('booking', () => {
       draft.date = ''
       draft.slotId = null
       draft.slotTime = ''
+      draft.cart = [] // 菜單是各門市自己的，換門市後原本選的餐點不適用
     }
     draft.storeId = id
     draft.storeName = name
@@ -99,6 +103,23 @@ export const useBookingStore = defineStore('booking', () => {
   function selectSlot(id: number, time: string): void {
     draft.slotId = id
     draft.slotTime = time
+  }
+
+  /** 設定某個品項的數量；0 代表從購物車移除。 */
+  function setQuantity(item: { id: number; name: string; price: number }, quantity: number): void {
+    const existing = draft.cart.find((line) => line.id === item.id)
+
+    if (quantity <= 0) {
+      draft.cart = draft.cart.filter((line) => line.id !== item.id)
+    } else if (existing) {
+      existing.quantity = quantity
+    } else {
+      draft.cart.push({ id: item.id, name: item.name, price: item.price, quantity })
+    }
+  }
+
+  function quantityOf(id: number): number {
+    return draft.cart.find((line) => line.id === id)?.quantity ?? 0
   }
 
   function setResult(result: Reservation): void {
@@ -121,6 +142,8 @@ export const useBookingStore = defineStore('booking', () => {
     selectStore,
     setDateAndParty,
     selectSlot,
+    setQuantity,
+    quantityOf,
     setResult,
     startOver,
   }

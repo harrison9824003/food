@@ -3,6 +3,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reactive, ref } from 'vue'
 import { errorMessage, http } from '@/api/http'
+import PayPanel from '@/components/PayPanel.vue'
 import ReservationCard from '@/components/ReservationCard.vue'
 import { useBookingStore } from '@/stores/booking'
 import type { Reservation } from '@/types/api'
@@ -94,6 +95,14 @@ const cancellable = (r: Reservation): boolean => r.status === 'confirmed' || r.s
 
   <div v-if="reservation" class="block">
     <ReservationCard :reservation="reservation" />
+    <PayPanel
+      v-if="reservation.can_pay"
+      :key="`${reservation.code}-${reservation.hold_expires_at}`"
+      :reservation="reservation"
+      :phone="form.phone"
+      @refresh="search"
+      @expired="search"
+    />
     <div v-if="cancellable(reservation)" class="actions">
       <el-button type="danger" plain :loading="cancelling" @click="cancel">取消訂位</el-button>
     </div>

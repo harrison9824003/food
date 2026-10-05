@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { errorMessage, http } from '@/api/http'
 import BusinessHoursPanel from '@/components/store/BusinessHoursPanel.vue'
 import ClosedDatesPanel from '@/components/store/ClosedDatesPanel.vue'
+import MenuPanel from '@/components/store/MenuPanel.vue'
 import SlotsPanel from '@/components/store/SlotsPanel.vue'
 import StoreBasicForm from '@/components/store/StoreBasicForm.vue'
 import TablesPanel from '@/components/store/TablesPanel.vue'
@@ -66,6 +67,9 @@ watch(storeId, load, { immediate: true })
       </el-tab-pane>
       <el-tab-pane label="桌位" name="tables">
         <TablesPanel :store-id="store.id" :can-manage="canManage" />
+      </el-tab-pane>
+      <el-tab-pane label="菜單" name="menu">
+        <MenuPanel :store-id="store.id" :can-manage="canManage" />
       </el-tab-pane>
       <el-tab-pane label="時段名額" name="slots">
         <SlotsPanel :store-id="store.id" :can-manage="canManage" />

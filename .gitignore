@@ -5,6 +5,8 @@ backend/.env
 backend/vendor/
 backend/node_modules/
 backend/storage/logs/*.log
+# 上傳的圖片在 Docker named volume 裡；這個目錄只是掛載點
+backend/storage/app/uploads/
 backend/storage/framework/cache/data/*
 backend/storage/framework/sessions/*
 backend/storage/framework/views/*

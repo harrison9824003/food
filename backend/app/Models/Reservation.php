@@ -7,6 +7,7 @@ use App\Enums\ReservationStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Reservation extends Model
 {
@@ -53,6 +54,17 @@ class Reservation extends Model
     public function slot(): BelongsTo
     {
         return $this->belongsTo(Slot::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /** 預點的餐點（不計費，僅供門市備餐參考）。 */
+    public function items(): HasMany
+    {
+        return $this->hasMany(ReservationItem::class);
     }
 
     /** 併桌時一張訂位對應多張桌子，所以是多對多。 */

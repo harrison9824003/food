@@ -14,6 +14,13 @@
 | food_admin | node:20-alpine | 5174 | Vue 3 管理後台 Vite dev server |
 | food_mock_erp | node:20-alpine（自建） | 3000 | Express 模擬 POS/ERP |
 
+### 使用者上傳的檔案
+
+菜單圖片放在 named volume `uploads_data`：`php-fpm` 掛載為可寫（`storage/app/uploads`），`nginx` 掛載為**唯讀**（`/var/www/uploads`）並以
+`/uploads/` 直接提供，不經過 PHP。一次性的 `uploads-init` 容器（`alpine`）負責把 volume 的擁有者設成 uid 82（`www-data`），
+`php-fpm` 以 `depends_on: service_completed_successfully` 等它跑完，否則第一次啟動時目錄是 root 的、上傳會失敗。
+詳見 [menu.md](menu.md)。上傳大小的限制要三處一致：`config/menu.php`、PHP 的 `post_max_size`（45M）、nginx 的 `client_max_body_size`（45M）。
+
 ### 壓測用的疊加設定
 
 `docker-compose.loadtest.yml` 與 `docker-compose.yml` 疊加使用（`-f docker-compose.yml -f docker-compose.loadtest.yml`），
@@ -68,6 +75,19 @@ while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; d
 | 排程 | 時間 | 說明 |
 |---|---|---|
 | `slots:generate` | 每天 00:10（`Asia/Taipei`） | 為啟用中的門市補上新進入開放期間的可訂時段，冪等；見 [store-settings.md](store-settings.md) |
+| `reservations:release-expired` | 每分鐘 | 釋放逾時未付款的暫時保留（到期 + 2 分鐘寬限），釋放前先向綠界對帳；見 [payment.md](payment.md) |
+| `payments:reconcile` | 每 5 分鐘 | 向綠界查詢漏接背景通知的付款並補單，與背景通知走同一套冪等處理 |
+
+三個排程都用 `withoutOverlapping()`（以 Redis 鎖避免上一輪還沒跑完又啟動下一輪）。
+
+### 日誌
+
+| channel | 檔案 | 內容 |
+|---|---|---|
+| 預設（`single`） | `storage/logs/laravel.log` | 一般應用日誌 |
+| `payment` | `storage/logs/payment-YYYY-MM-DD.log` | 金流：通知原文、驗章失敗、冪等略過、晚到付款、對帳… |
+
+所有日誌行都帶 `request_id`（`AssignRequestId` middleware 以 `Log::shareContext` 注入）。
 
 ### queue 和 scheduler 獨立容器
 各自有不同重啟語意。重啟 php-fpm pool 不會中斷長時間執行的 queue job。

@@ -5,6 +5,7 @@ namespace App\Booking;
 use App\Enums\PaymentStatus;
 use App\Enums\ReservationStatus;
 use App\Exceptions\ApiException;
+use App\Models\MenuItem;
 use App\Models\Reservation;
 use App\Models\Slot;
 use App\Models\Store;
@@ -48,18 +49,64 @@ class ReservationService
             throw new ApiException($block->message, $block->code, $block->httpStatus());
         }
 
+        $items = $this->resolveItems($store, $data['items'] ?? []);
+
         $reservation = $this->retrier->run(fn () => $this->inTransaction(
-            fn () => $this->book($store, $slot, $guests, $data, $strategy),
+            fn () => $this->book($store, $slot, $guests, $data, $items, $strategy),
         ));
 
-        return $reservation->load(['store', 'slot', 'tables']);
+        return $reservation->load(['store', 'slot', 'tables', 'items']);
+    }
+
+    /**
+     * 核對預點的餐點：必須屬於這間門市且上架中，並把「現在的價格」記下來當快照。
+     * 不能相信前端送來的價格或品項名稱，只收品項 ID 與數量。
+     *
+     * @param  list<array{menu_item_id: int, quantity: int}>  $requested
+     * @return list<array{menu_item_id: int, name: string, quantity: int, unit_price: int}>
+     *
+     * @throws ApiException
+     */
+    private function resolveItems(Store $store, array $requested): array
+    {
+        if ($requested === []) {
+            return [];
+        }
+
+        $menu = MenuItem::query()
+            ->where('store_id', $store->id)
+            ->where('is_active', true)
+            // 與顧客看得到的菜單一致：停用分類底下的品項在菜單上看不到，也就不能預點
+            ->where(fn ($q) => $q->whereNull('category_id')
+                ->orWhereHas('category', fn ($c) => $c->where('is_active', true)))
+            ->whereIn('id', collect($requested)->pluck('menu_item_id'))
+            ->get()
+            ->keyBy('id');
+
+        return collect($requested)->map(function (array $item) use ($menu) {
+            $menuItem = $menu->get($item['menu_item_id'])
+                ?? throw new ApiException('預點的餐點已下架或不存在，請重新選擇', 'INVALID_MENU_ITEM', 422);
+
+            // 菜單頁面載入之後才被標示售完的品項：以伺服器現在的狀態為準，不信任顧客手上那份舊菜單
+            if ($menuItem->is_sold_out) {
+                throw new ApiException("「{$menuItem->name}」今日已售完，請重新選擇", 'MENU_ITEM_SOLD_OUT', 422);
+            }
+
+            return [
+                'menu_item_id' => $menuItem->id,
+                // 名稱與價格都快照：之後菜單改名或改價，已成立的訂位仍顯示當時預點的內容
+                'name' => $menuItem->name,
+                'quantity' => (int) $item['quantity'],
+                'unit_price' => $menuItem->price,
+            ];
+        })->values()->all();
     }
 
     /**
      * 交易內的三個步驟（任何一步失敗整筆回滾，名額不會白扣）：
      *  1. 佔名額   2. 分配桌位   3. 建立訂位與桌位關聯
      */
-    private function book(Store $store, Slot $slot, int $guests, array $data, CapacityStrategy $strategy): Reservation
+    private function book(Store $store, Slot $slot, int $guests, array $data, array $items, CapacityStrategy $strategy): Reservation
     {
         if (! $strategy->take($slot->id, $guests)) {
             throw new ApiException('該時段名額已滿', 'SLOT_FULL', 409);
@@ -86,6 +133,10 @@ class ReservationService
             'hold_expires_at' => $needsPayment ? now()->addMinutes(config('booking.hold_minutes')) : null,
             'request_id' => request()->header('X-Request-Id'),
         ]);
+
+        if ($items !== []) {
+            $reservation->items()->createMany($items);
+        }
 
         try {
             $reservation->tables()->attach(

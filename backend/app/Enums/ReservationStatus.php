@@ -25,7 +25,8 @@ enum ReservationStatus: string
     public function allowedTransitions(): array
     {
         return match ($this) {
-            self::PendingPayment => [self::Cancelled, self::Expired],
+            // Confirmed 只由「收到付款成功」這條系統流程觸發，後台不能手動指定（見 UpdateReservationStatusRequest）
+            self::PendingPayment => [self::Confirmed, self::Cancelled, self::Expired],
             self::Confirmed => [self::Arrived, self::NoShow, self::Cancelled],
             self::Arrived, self::NoShow, self::Cancelled, self::Expired => [],
         };

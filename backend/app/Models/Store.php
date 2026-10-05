@@ -76,6 +76,16 @@ class Store extends Model
         return $this->hasMany(DiningTable::class);
     }
 
+    public function menuItems(): HasMany
+    {
+        return $this->hasMany(MenuItem::class);
+    }
+
+    public function menuCategories(): HasMany
+    {
+        return $this->hasMany(MenuCategory::class);
+    }
+
     public function slots(): HasMany
     {
         return $this->hasMany(Slot::class);

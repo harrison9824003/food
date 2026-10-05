@@ -32,6 +32,8 @@ async function submit(): Promise<void> {
       phone: booking.phone,
       email: booking.email || null,
       note: booking.note || null,
+      // 只送品項 ID 與數量；價格以伺服器上的為準，不信任前端
+      items: booking.cart.map((line) => ({ menu_item_id: line.id, quantity: line.quantity })),
     })
     booking.setResult(data)
     await router.replace({ name: 'result' })
@@ -55,7 +57,7 @@ function reselect(): void {
 </script>
 
 <template>
-  <BookingSteps :active="4" />
+  <BookingSteps :active="5" />
 
   <h2>確認訂位資料</h2>
 
@@ -72,6 +74,10 @@ function reselect(): void {
     <el-descriptions-item label="手機">{{ booking.phone }}</el-descriptions-item>
     <el-descriptions-item v-if="booking.email" label="Email">{{ booking.email }}</el-descriptions-item>
     <el-descriptions-item v-if="booking.note" label="備註">{{ booking.note }}</el-descriptions-item>
+    <el-descriptions-item v-if="booking.cart.length" label="預點餐點">
+      <div v-for="line in booking.cart" :key="line.id">{{ line.name }} × {{ line.quantity }}</div>
+      <div class="sub">預點不計費，用餐時結帳</div>
+    </el-descriptions-item>
     <el-descriptions-item label="訂金">
       <template v-if="booking.depositTotal > 0">
         <strong>${{ booking.depositTotal }}</strong>（每人 ${{ booking.depositPerPerson }}）
@@ -86,7 +92,7 @@ function reselect(): void {
     show-icon
     :closable="false"
     class="alert"
-    title="此門市需要訂金：送出後會為您保留 10 分鐘，線上付款功能即將開放。"
+    title="此門市需要訂金：送出後會為您保留座位 10 分鐘，請在時間內完成線上付款，逾時座位將釋出。"
   />
 
   <div class="actions">
@@ -98,6 +104,11 @@ function reselect(): void {
 <style scoped>
 .alert {
   margin: 16px 0;
+}
+.sub {
+  color: #909399;
+  font-size: 12px;
+  margin-top: 2px;
 }
 .actions {
   display: flex;

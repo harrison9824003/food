@@ -13,6 +13,8 @@ services:
       - ./backend:/var/www/backend:ro
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # 使用者上傳的圖片：nginx 唯讀，直接以 /uploads/ 對外提供
+      - uploads_data:/var/www/uploads:ro
     depends_on:
       - php-fpm
       - frontend
@@ -32,15 +34,29 @@ services:
     volumes:
       - ./backend:/var/www/backend
       - backend_vendor:/var/www/backend/vendor
+      # 上傳的圖片放在 named volume（和 vendor 同理：避開 Windows bind mount 的效能與 symlink 問題）
+      - uploads_data:/var/www/backend/storage/app/uploads
     env_file:
       - ./backend/.env
     depends_on:
+      uploads-init:
+        condition: service_completed_successfully
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
       - food_net
+
+  # ── 一次性：把上傳目錄的擁有者設成 php-fpm 的執行身分 ───────────────────────────
+  # named volume 第一次建立時是 root 擁有，php-fpm（www-data, uid 82）寫不進去，圖片上傳會失敗。
+  uploads-init:
+    image: alpine:3.20
+    container_name: food_uploads_init
+    command: ["sh", "-c", "chown -R 82:82 /uploads && chmod 775 /uploads"]
+    volumes:
+      - uploads_data:/uploads
+    restart: "no"
 
   # ── MySQL 8 ───────────────────────────────────────────────────────────────────
   mysql:
@@ -141,6 +157,8 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_BASE_URL=http://localhost/api
+      # 顯示開發用的付款模擬器按鈕（綠界打不到 localhost）。正式環境不要設定這個變數
+      - VITE_PAYMENT_SIMULATOR=true
     networks:
       - food_net
 
@@ -181,6 +199,7 @@ networks:
 
 # ── Volumes ────────────────────────────────────────────────────────────────────
 volumes:
+  uploads_data:
   mysql_data:
   redis_data:
   backend_vendor:

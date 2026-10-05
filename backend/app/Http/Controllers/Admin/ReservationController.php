@@ -23,7 +23,7 @@ class ReservationController extends Controller
         $filters = $request->validated();
 
         $reservations = Reservation::query()
-            ->with(['store', 'slot', 'tables'])
+            ->with(['store', 'slot', 'tables', 'items', 'payments'])
             ->select('reservations.*')
             ->join('slots', 'slots.id', '=', 'reservations.slot_id')
             // 總部可用 ?store_id= 篩選；其他角色固定只看自己門市，即使帶了別間的 store_id 也無效
@@ -34,6 +34,8 @@ class ReservationController extends Controller
             )
             ->when($filters['date'] ?? null, fn ($q, $date) => $q->where('slots.slot_date', $date))
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('reservations.status', $status))
+            // 只看「錢已收到但訂位無法成立」的訂單，等退款流程處理
+            ->when($request->boolean('needs_refund'), fn ($q) => $q->whereHas('payments', fn ($p) => $p->where('needs_refund', true)))
             ->when($filters['q'] ?? null, function ($q, string $term) {
                 $like = '%'.addcslashes($term, '%_\\').'%';
                 $q->where(fn ($w) => $w
@@ -53,6 +55,6 @@ class ReservationController extends Controller
     {
         $updated = $status->transition($reservation, ReservationStatus::from($request->validated('status')));
 
-        return new AdminReservationResource($updated->load(['store', 'slot', 'tables']));
+        return new AdminReservationResource($updated->load(['store', 'slot', 'tables', 'items', 'payments']));
     }
 }

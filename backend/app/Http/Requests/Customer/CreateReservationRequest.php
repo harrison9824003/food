@@ -24,6 +24,10 @@ class CreateReservationRequest extends FormRequest
             'phone' => ['required', 'string', 'regex:/^09\d{8}$/'],
             'email' => ['nullable', 'string', 'email', 'max:255'],
             'note' => ['nullable', 'string', 'max:500'],
+            // 預點餐點（選填、不計費）。品項是否屬於該門市且上架中，由 ReservationService 核對
+            'items' => ['sometimes', 'array', 'max:30'],
+            'items.*.menu_item_id' => ['required', 'integer', 'distinct'],
+            'items.*.quantity' => ['required', 'integer', 'between:1,20'],
         ];
     }
 

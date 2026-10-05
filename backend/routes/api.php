@@ -8,8 +8,14 @@ use App\Http\Controllers\Admin\ReservationController as AdminReservationControll
 use App\Http\Controllers\Admin\SlotController;
 use App\Http\Controllers\Admin\StoreController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\MenuCategoryController;
+use App\Http\Controllers\Admin\MenuItemController;
+use App\Http\Controllers\Admin\MenuItemImageController;
 use App\Http\Controllers\Customer\ReservationController as CustomerReservationController;
 use App\Http\Controllers\Customer\StoreController as CustomerStoreController;
+use App\Http\Controllers\Dev\EcpaySimulatorController;
+use App\Http\Controllers\Payments\EcpayNotifyController;
+use App\Http\Controllers\Payments\EcpayReturnController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,15 +27,31 @@ Route::middleware('throttle:public-read')->group(function () {
     Route::get('stores', [CustomerStoreController::class, 'index']);
     Route::get('stores/{store}/calendar', [CustomerStoreController::class, 'calendar']);
     Route::get('stores/{store}/availability', [CustomerStoreController::class, 'availability']);
+    Route::get('stores/{store}/menu', [CustomerStoreController::class, 'menu']);
 });
 
 Route::post('reservations', [CustomerReservationController::class, 'store'])->middleware('throttle:booking-create');
 
-// 查詢與取消要猜「代號 + 手機」才能命中，限流擋暴力嘗試
+// 查詢、取消、付款都要猜「代號 + 手機」才能命中，限流擋暴力嘗試
 Route::middleware('throttle:reservation-lookup')->group(function () {
     Route::post('reservations/lookup', [CustomerReservationController::class, 'lookup']);
     Route::post('reservations/cancel', [CustomerReservationController::class, 'cancel']);
+    Route::post('reservations/pay', [CustomerReservationController::class, 'pay']);
 });
+
+/*
+|--------------------------------------------------------------------------
+| 金流（綠界）
+|--------------------------------------------------------------------------
+|
+| 這兩支由綠界的伺服器與顧客的瀏覽器呼叫，不能掛 IP 限流（綠界的來源 IP 很集中，重送時會被誤擋）。
+| 安全性靠 CheckMacValue 驗章，而不是靠網址保密。
+*/
+Route::post('payments/ecpay/notify', EcpayNotifyController::class);
+Route::match(['get', 'post'], 'payments/ecpay/return', EcpayReturnController::class);
+
+// 本機付款模擬器：只在非正式環境且 ECPAY_SIMULATOR=true 時有作用，否則回 404
+Route::post('dev/ecpay/simulate', EcpaySimulatorController::class)->middleware('throttle:30,1');
 
 /*
 |--------------------------------------------------------------------------
@@ -60,6 +82,18 @@ Route::prefix('admin')->group(function () {
             Route::get('tables', [DiningTableController::class, 'index']);
             Route::post('tables', [DiningTableController::class, 'store']);
             Route::patch('tables/{diningTable}', [DiningTableController::class, 'update']);
+
+            Route::get('menu-categories', [MenuCategoryController::class, 'index']);
+            Route::post('menu-categories', [MenuCategoryController::class, 'store']);
+            Route::patch('menu-categories/{menuCategory}', [MenuCategoryController::class, 'update']);
+            Route::delete('menu-categories/{menuCategory}', [MenuCategoryController::class, 'destroy']);
+
+            Route::get('menu-items', [MenuItemController::class, 'index']);
+            Route::post('menu-items', [MenuItemController::class, 'store']);
+            Route::patch('menu-items/{menuItem}', [MenuItemController::class, 'update']);
+            Route::post('menu-items/{menuItem}/images', [MenuItemImageController::class, 'store']);
+            Route::put('menu-items/{menuItem}/images/order', [MenuItemImageController::class, 'reorder']);
+            Route::delete('menu-items/{menuItem}/images/{image}', [MenuItemImageController::class, 'destroy']);
 
             Route::get('slots', [SlotController::class, 'index']);
             Route::post('slots/generate', [SlotController::class, 'generate']);

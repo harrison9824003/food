@@ -23,6 +23,7 @@ class ReservationIndexRequest extends FormRequest
             'date' => ['sometimes', 'date_format:Y-m-d'],
             'status' => ['sometimes', Rule::enum(ReservationStatus::class)],
             'q' => ['sometimes', 'string', 'max:50'],
+            'needs_refund' => ['sometimes', 'boolean'],
         ];
     }
 }

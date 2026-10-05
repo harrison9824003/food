@@ -26,6 +26,12 @@ const router = createRouter({
       meta: { title: '選擇時段', requires: 'dateAndParty' },
     },
     {
+      path: '/book/menu',
+      name: 'menu',
+      component: () => import('@/views/MenuView.vue'),
+      meta: { title: '選擇餐點', requires: 'slot' },
+    },
+    {
       path: '/book/info',
       name: 'info',
       component: () => import('@/views/ContactView.vue'),
@@ -38,6 +44,12 @@ const router = createRouter({
       meta: { title: '確認訂位', requires: 'contact' },
     },
     { path: '/result', name: 'result', component: () => import('@/views/ResultView.vue'), meta: { title: '訂位完成' } },
+    {
+      path: '/payment/return',
+      name: 'payment-return',
+      component: () => import('@/views/PaymentReturnView.vue'),
+      meta: { title: '付款結果' },
+    },
     { path: '/lookup', name: 'lookup', component: () => import('@/views/LookupView.vue'), meta: { title: '我的訂位' } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],

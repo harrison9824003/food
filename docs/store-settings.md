@@ -12,6 +12,7 @@
 | 公休日 | `store_closed_dates` | 特定日期公休（國定假日、員工旅遊…） |
 | 桌位 | `dining_tables` | 桌號、人數上下限、可否併桌、是否啟用 |
 | 時段名額 | `slots` | 某天某時段的 `capacity` 與 `booked` |
+| 菜單 | `menu_categories`、`menu_items`、`menu_item_images` | 分類、說明、今日售完、多張圖片；供顧客訂位時預點（不計費）。品項只能下架、不能刪除。見 [menu.md](menu.md) |
 
 `cutoff_minutes` 目前只是儲存設定，實際的「超過截止時間不可訂」在里程碑 4 的訂位流程中判斷。
 

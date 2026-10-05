@@ -10,11 +10,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * 訂位狀態變更（顧客取消、後台標記已到／未到／取消、未來的逾時釋放）的唯一入口。
+ * 訂位狀態變更（顧客取消、後台標記已到／未到／取消、付款成功、逾時釋放）的唯一入口。
  * 集中在這裡，才能確保「狀態變了，名額與桌位一定同步歸還」。
  */
 class ReservationStatusService
 {
+    public function __construct(private readonly TableAllocator $tables) {}
+
     /**
      * @throws ApiException
      */
@@ -51,6 +53,52 @@ class ReservationStatusService
 
             return $current;
         });
+    }
+
+    /**
+     * 收到付款成功：待付款 → 已確認。名額與桌位在建立訂位時就已經保留，這裡不必再動。
+     * 呼叫端（PaymentSettlement）須已在交易內並鎖住這筆訂位。
+     */
+    public function confirmPayment(Reservation $reservation): void
+    {
+        $reservation->update([
+            'status' => ReservationStatus::Confirmed,
+            'payment_status' => PaymentStatus::Paid,
+            'hold_expires_at' => null,
+        ]);
+    }
+
+    /**
+     * 訂位已因逾時釋放，之後才收到付款成功：嘗試把名額與桌位重新佔回來。
+     *
+     * 做法與一般訂位相同（條件式原子 UPDATE 佔名額、再分配桌位），所以一樣不會超賣：
+     * 如果這段時間名額或桌位已被別人訂走，就補不回來，回傳 false，由呼叫端標記待退款。
+     * 呼叫端須已在交易內並鎖住這筆訂位。
+     */
+    public function reinstate(Reservation $reservation): bool
+    {
+        $reservation->loadMissing('slot');
+
+        try {
+            // 巢狀交易（savepoint）：佔名額成功但分配桌位失敗時，只回滾這一小段，不影響外層已寫入的付款紀錄
+            DB::transaction(function () use ($reservation) {
+                if (! (new AtomicUpdateStrategy)->take($reservation->slot_id, $reservation->party_size)) {
+                    throw new ApiException('該時段名額已滿', 'SLOT_FULL', 409);
+                }
+
+                $tableIds = $this->tables->allocate($reservation->slot, $reservation->party_size);
+
+                $reservation->tables()->attach(
+                    collect($tableIds)->mapWithKeys(fn (int $id) => [$id => ['slot_id' => $reservation->slot_id]])->all()
+                );
+            });
+        } catch (ApiException) {
+            return false;
+        }
+
+        $this->confirmPayment($reservation);
+
+        return true;
     }
 
     /** 歸還名額與桌位。 */

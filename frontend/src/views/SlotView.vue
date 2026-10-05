@@ -47,7 +47,7 @@ function next(): void {
     ElMessage.warning('請選擇時段')
     return
   }
-  void router.push({ name: 'info' })
+  void router.push({ name: 'menu' })
 }
 
 onMounted(load)

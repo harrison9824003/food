@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Payments\EcpayGateway;
+use App\Payments\PaymentGateway;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -12,7 +14,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // 業務程式只依賴 PaymentGateway 介面；測試時可以換成替身或用 Http::fake()
+        $this->app->bind(PaymentGateway::class, EcpayGateway::class);
     }
 
     public function boot(): void

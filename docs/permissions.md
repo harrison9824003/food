@@ -70,6 +70,12 @@ Sanctum **Bearer Token**：登入後取得 token，之後放在 `Authorization: 
 
 非總部帶別間門市的 `store_id` 篩選無效（固定回自己門市）；變更別間門市的訂單回 `403`。
 
+## 菜單權限
+
+菜單分類、品項與圖片（`/api/admin/stores/{store}/menu-categories`、`menu-items`、`menu-items/{id}/images`）
+沿用門市設定的規則（`StorePolicy`）：總部全部門市、店長自己門市、店員唯讀；用 A 店的網址存取 B 店的分類、品項、圖片回 `404`。
+品項不提供刪除，只能下架（歷史訂位的預點內容與價格快照會參照它）。圖片上傳的安全設計見 [menu.md](menu.md)。
+
 ## 統一錯誤格式
 
 ```json

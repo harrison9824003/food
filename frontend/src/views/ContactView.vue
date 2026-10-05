@@ -27,7 +27,7 @@ async function next(): Promise<void> {
 </script>
 
 <template>
-  <BookingSteps :active="3" />
+  <BookingSteps :active="4" />
 
   <h2>聯絡資料</h2>
 
@@ -47,7 +47,7 @@ async function next(): Promise<void> {
   </el-form>
 
   <div class="actions">
-    <el-button @click="router.push({ name: 'slot' })">上一步</el-button>
+    <el-button @click="router.push({ name: 'menu' })">上一步</el-button>
     <el-button type="primary" @click="next">下一步</el-button>
   </div>
 </template>

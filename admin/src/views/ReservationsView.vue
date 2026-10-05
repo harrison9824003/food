@@ -3,7 +3,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
 import { errorMessage, http } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
-import { STATUS_ACTION_LABELS, STATUS_OPTIONS } from '@/types/api'
+import { PAYMENT_STATUS_LABELS, REFUND_REASON_LABELS, STATUS_ACTION_LABELS, STATUS_OPTIONS } from '@/types/api'
 import type { AdminReservation, Paginated, Store } from '@/types/api'
 
 const auth = useAuthStore()
@@ -15,7 +15,7 @@ const page = ref(1)
 const total = ref(0)
 const perPage = ref(20)
 
-const filters = reactive({ store_id: null as number | null, date: '', status: '', q: '' })
+const filters = reactive({ store_id: null as number | null, date: '', status: '', q: '', needs_refund: false })
 
 async function load(): Promise<void> {
   loading.value = true
@@ -26,6 +26,7 @@ async function load(): Promise<void> {
     if (filters.date) params.date = filters.date
     if (filters.status) params.status = filters.status
     if (filters.q.trim()) params.q = filters.q.trim()
+    if (filters.needs_refund) params.needs_refund = 1
 
     const { data } = await http.get<Paginated<AdminReservation>>('/admin/reservations', { params })
     rows.value = data.data
@@ -44,7 +45,7 @@ function search(): void {
 }
 
 function reset(): void {
-  Object.assign(filters, { store_id: null, date: '', status: '', q: '' })
+  Object.assign(filters, { store_id: null, date: '', status: '', q: '', needs_refund: false })
   search()
 }
 
@@ -130,6 +131,9 @@ onMounted(async () => {
         <el-input v-model="filters.q" placeholder="姓名／手機／代號" clearable style="width: 180px" />
       </el-form-item>
       <el-form-item>
+        <el-checkbox v-model="filters.needs_refund">只看待退款</el-checkbox>
+      </el-form-item>
+      <el-form-item>
         <el-button type="primary" native-type="submit">搜尋</el-button>
         <el-button @click="reset">重設</el-button>
       </el-form-item>
@@ -154,6 +158,27 @@ onMounted(async () => {
       <el-table-column label="狀態" width="90">
         <template #default="{ row }">
           <el-tag :type="tagType(row.status)">{{ row.status_label }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="付款" min-width="130">
+        <template #default="{ row }">
+          <span v-if="row.deposit_amount > 0">${{ row.deposit_amount }} {{ PAYMENT_STATUS_LABELS[row.payment_status] ?? row.payment_status }}</span>
+          <span v-else class="muted">免訂金</span>
+          <!-- 錢已收到但訂位無法成立：等退款流程處理，先在這裡標出來避免被忽略 -->
+          <el-tooltip v-if="row.needs_refund" placement="top">
+            <template #content>
+              <div v-for="p in row.payments.filter((x: { needs_refund: boolean }) => x.needs_refund)" :key="p.merchant_trade_no">
+                {{ REFUND_REASON_LABELS[p.refund_reason] ?? p.refund_reason }}（${{ p.amount }}）
+              </div>
+            </template>
+            <el-tag type="danger" size="small" class="refund-tag">待退款</el-tag>
+          </el-tooltip>
+        </template>
+      </el-table-column>
+      <el-table-column label="預點" min-width="140">
+        <template #default="{ row }">
+          <span v-if="!row.items?.length" class="muted">—</span>
+          <div v-for="item in row.items" :key="item.name">{{ item.name }} ×{{ item.quantity }}</div>
         </template>
       </el-table-column>
       <el-table-column label="操作" min-width="170" fixed="right">
@@ -187,6 +212,12 @@ onMounted(async () => {
 <style scoped>
 .filters {
   margin-bottom: 8px;
+}
+.muted {
+  color: #c0c4cc;
+}
+.refund-tag {
+  margin-left: 6px;
 }
 .pager {
   margin-top: 16px;
