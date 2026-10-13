@@ -107,15 +107,34 @@ POST /api/reservations/pay          建立一筆 payments（pending），回傳�
 
 ## 接真正的綠界測試環境（選用）
 
-1. 用 [ngrok](https://ngrok.com/) 或 cloudflared 取得指向本機 80 埠的公開網址，例如 `https://abc123.ngrok-free.app`。
-2. `backend/.env`：
-   ```
-   ECPAY_NOTIFY_URL=https://abc123.ngrok-free.app/api/payments/ecpay/notify
-   ECPAY_ORDER_RESULT_URL=https://abc123.ngrok-free.app/api/payments/ecpay/return
-   FRONTEND_URL=https://abc123.ngrok-free.app
-   ```
-   然後 `docker compose up -d --force-recreate php-fpm queue scheduler` 讓設定生效。
-3. 用公開網址開前台、訂位後按「前往付款」。測試信用卡請依綠界官方文件（測試卡號 `4311-9522-2222-2222`，有效期任一未來月份，安全碼 `222`，3D 驗證碼 `1234`；以官方最新文件為準）。
+一行指令開一條臨時的公開網址，讓綠界的背景通知打得到本機：
+
+```bash
+./scripts/ecpay-tunnel.sh up       # 開通道、寫入設定、重建容器、做連通檢查
+./scripts/ecpay-tunnel.sh logs     # 另開終端機：即時看綠界的通知進來
+./scripts/ecpay-tunnel.sh status   # 通道與 Laravel 實際生效的 notify 網址
+./scripts/ecpay-tunnel.sh down     # 測完務必關閉：關通道、還原 backend/.env
+```
+
+`up` 之後照常用 `http://localhost` 開前台、訂一個需要訂金的時段、按「前往付款」。
+測試信用卡請依綠界官方文件（測試卡號 `4311-9522-2222-2222`，有效期任一未來月份，安全碼 `222`，3D 驗證碼 `1234`；以官方最新文件為準）。
+
+**為什麼只換 `ECPAY_NOTIFY_URL`**：背景通知是綠界的伺服器打過來的，一定要公開網址；
+瀏覽器導回（`ECPAY_ORDER_RESULT_URL`）和前台網址是顧客自己的瀏覽器在連，本機測試時就是你的瀏覽器，`localhost` 連得到。
+維持 `localhost` 就不必處理 Vite 的 Host 檢查、CORS 與 Sanctum 網域。
+
+**怎麼做到的**：
+
+- 通道用 Cloudflare Quick Tunnel（`docker-compose.yml` 的 `tunnel` 服務，放在 `tunnel` profile，平常不會啟動）。
+  跑在容器裡，免安裝、免註冊；網址每次啟動都不同，腳本每次都會重寫設定。
+- 腳本把設定寫在 `backend/.env` 一段有標記的區塊內，`down` 只移除這段，其他設定不動。
+  若區塊外已手動設定 `ECPAY_NOTIFY_URL`，腳本會拒絕執行，避免兩份設定打架。
+- 改完 `.env` 會**重建**（不是重啟）php-fpm／queue／scheduler：`env_file` 是建立容器時注入的環境變數，
+  優先於 Laravel 自己讀的 `.env`，只 restart 不會生效。
+- 連通檢查從外部經公開網址對 notify 路由送 **GET**，預期 `405`（路由只收 POST）：證明外部連得到，
+  又不會在金流日誌留下一筆假的驗章失敗。DNS 查詢走 Cloudflare 的 DoH，避開 macOS 對「新網域查不到」的快取。
+
+通道開著時，任何人都能經由那個網址連到你的本機服務，測完請 `down`。
 
 測試商店 `2000132` 是所有開發者共用的，不要在上面做任何敏感的事。
 

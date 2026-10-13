@@ -192,6 +192,20 @@ services:
     networks:
       - food_net
 
+  # ── 公開網址通道（選用，僅開發用）──────────────────────────────────────────────────
+  # 綠界的背景通知打不到 localhost，用 Cloudflare Quick Tunnel 取得臨時的公開 https 網址轉到 nginx。
+  # 免安裝、免註冊；放在 profile 裡，平常 `docker compose up` 不會啟動。
+  # 不要直接操作這個服務，用 scripts/ecpay-tunnel.sh（會一併更新 ECPAY_NOTIFY_URL），見 docs/payment.md
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: food_tunnel
+    profiles: ["tunnel"]
+    command: ["tunnel", "--no-autoupdate", "--url", "http://nginx:80"]
+    depends_on:
+      - nginx
+    networks:
+      - food_net
+
 # ── Networks ───────────────────────────────────────────────────────────────────
 networks:
   food_net:
