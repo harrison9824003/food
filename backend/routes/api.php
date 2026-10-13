@@ -13,7 +13,9 @@ use App\Http\Controllers\Admin\MenuItemController;
 use App\Http\Controllers\Admin\MenuItemImageController;
 use App\Http\Controllers\Customer\ReservationController as CustomerReservationController;
 use App\Http\Controllers\Customer\StoreController as CustomerStoreController;
+use App\Http\Controllers\Customer\PhoneVerificationController;
 use App\Http\Controllers\Dev\EcpaySimulatorController;
+use App\Http\Controllers\Dev\SmsInboxController;
 use App\Http\Controllers\Payments\EcpayNotifyController;
 use App\Http\Controllers\Payments\EcpayReturnController;
 use Illuminate\Support\Facades\Route;
@@ -30,10 +32,15 @@ Route::middleware('throttle:public-read')->group(function () {
     Route::get('stores/{store}/menu', [CustomerStoreController::class, 'menu']);
 });
 
+// 手機簡訊驗證：先寄驗證碼、再驗證換憑證；訂位、查詢、取消、付款都以這張憑證證明持有手機
+Route::post('phone/send-code', [PhoneVerificationController::class, 'send'])->middleware('throttle:sms-send');
+Route::post('phone/verify', [PhoneVerificationController::class, 'verify'])->middleware('throttle:sms-verify');
+
 Route::post('reservations', [CustomerReservationController::class, 'store'])->middleware('throttle:booking-create');
 
 // 查詢、取消、付款都要猜「代號 + 手機」才能命中，限流擋暴力嘗試
 Route::middleware('throttle:reservation-lookup')->group(function () {
+    Route::get('my/reservations', [CustomerReservationController::class, 'mine']);
     Route::post('reservations/lookup', [CustomerReservationController::class, 'lookup']);
     Route::post('reservations/cancel', [CustomerReservationController::class, 'cancel']);
     Route::post('reservations/pay', [CustomerReservationController::class, 'pay']);
@@ -52,6 +59,8 @@ Route::match(['get', 'post'], 'payments/ecpay/return', EcpayReturnController::cl
 
 // 本機付款模擬器：只在非正式環境且 ECPAY_SIMULATOR=true 時有作用，否則回 404
 Route::post('dev/ecpay/simulate', EcpaySimulatorController::class)->middleware('throttle:30,1');
+// 本機簡訊收件匣：看 MockSmsDriver 存下來的驗證碼簡訊；只在非正式環境且 SMS_MOCK_INBOX=true 時有作用
+Route::get('dev/sms', SmsInboxController::class)->middleware('throttle:60,1');
 
 /*
 |--------------------------------------------------------------------------

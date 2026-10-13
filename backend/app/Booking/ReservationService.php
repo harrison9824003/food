@@ -126,6 +126,7 @@ class ReservationService
             'email' => $data['email'] ?? null,
             'party_size' => $guests,
             'note' => $data['note'] ?? null,
+            'phone_verified_at' => ($data['phone_verified'] ?? false) ? now() : null,
             // 需要訂金：先「暫時保留」名額，限時付款（逾時釋放在里程碑 5）；免訂金：直接確認
             'status' => $needsPayment ? ReservationStatus::PendingPayment : ReservationStatus::Confirmed,
             'payment_status' => $needsPayment ? PaymentStatus::Unpaid : PaymentStatus::NotRequired,

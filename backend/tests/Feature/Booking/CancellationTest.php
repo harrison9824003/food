@@ -142,7 +142,10 @@ class CancellationTest extends TestCase
 
     public function test_lookup_validates_input_format(): void
     {
-        $this->postJson('/api/reservations/lookup', [])->assertStatus(422)->assertJsonValidationErrors(['code', 'phone'], 'errors');
+        $this->postJson('/api/reservations/lookup', [])->assertStatus(422)->assertJsonValidationErrors('code', 'errors');
+        // 寬鬆模式下手機號碼不可省略（嚴格模式由憑證決定，見 Sms/PhoneVerificationTest）
+        $this->postJson('/api/reservations/lookup', ['code' => 'ABCDEFGH'])->assertStatus(422)->assertJsonPath('code', 'PHONE_REQUIRED');
+        $this->postJson('/api/reservations/lookup', ['code' => 'ABCDEFGH', 'phone' => '123'])->assertStatus(422)->assertJsonValidationErrors('phone', 'errors');
         $this->postJson('/api/reservations/lookup', ['code' => 'short', 'phone' => '0912345678'])->assertStatus(422)->assertJsonValidationErrors('code', 'errors');
     }
 

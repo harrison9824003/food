@@ -42,6 +42,14 @@
         <!-- 金流日誌是獨立檔案、不受 LOG_CHANNEL 影響；測試不該把假的通知寫進開發環境的金流日誌 -->
         <env name="PAYMENT_LOG_LEVEL" value="emergency" force="true"/>
         <server name="PAYMENT_LOG_LEVEL" value="emergency" force="true"/>
+        <!-- 既有的訂位／付款測試不關心手機驗證，所以預設用寬鬆模式（直接採用請求裡的手機號碼）；
+             驗證流程本身的測試（Sms/）自己用 config() 打開嚴格模式。正式環境一律嚴格，見 PhoneAuth -->
+        <env name="SMS_REQUIRE_VERIFICATION" value="false" force="true"/>
+        <server name="SMS_REQUIRE_VERIFICATION" value="false" force="true"/>
+        <env name="SMS_DRIVER" value="mock" force="true"/>
+        <server name="SMS_DRIVER" value="mock" force="true"/>
+        <env name="SMS_LOG_LEVEL" value="emergency" force="true"/>
+        <server name="SMS_LOG_LEVEL" value="emergency" force="true"/>
         <!-- 本機付款模擬器預設關閉；需要的測試自己用 config() 開啟 -->
         <env name="ECPAY_SIMULATOR" value="false" force="true"/>
         <server name="ECPAY_SIMULATOR" value="false" force="true"/>

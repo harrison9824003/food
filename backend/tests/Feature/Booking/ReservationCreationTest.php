@@ -193,8 +193,11 @@ class ReservationCreationTest extends TestCase
         config(['booking.allow_strategy_header' => true]);
         $this->app->detectEnvironment(fn () => 'production');
 
+        // 正式環境一律要求手機驗證，所以要帶憑證（見 PhoneAuth）
+        $token = \App\Sms\PhoneToken::issue('0912345678')['token'];
+
         // 若標頭生效，'unsafe' 會被接受、'bogus' 會 422；正式環境兩者都必須被忽略
-        $this->book([], ['X-Booking-Strategy' => 'bogus'])->assertCreated();
+        $this->book([], ['X-Booking-Strategy' => 'bogus', 'X-Phone-Token' => $token])->assertCreated();
         $this->assertSame(2, $this->slot->fresh()->booked);
     }
 }

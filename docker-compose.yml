@@ -159,6 +159,8 @@ services:
       - VITE_API_BASE_URL=http://localhost/api
       # 顯示開發用的付款模擬器按鈕（綠界打不到 localhost）。正式環境不要設定這個變數
       - VITE_PAYMENT_SIMULATOR=true
+      # 顯示開發用的模擬簡訊收件匣（本機不會真的發簡訊）。正式環境不要設定這個變數
+      - VITE_SMS_INBOX=true
     networks:
       - food_net
 

@@ -1,53 +1,38 @@
 <script setup lang="ts">
-import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { reactive, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { errorMessage, http } from '@/api/http'
 import PayPanel from '@/components/PayPanel.vue'
+import PhoneVerify from '@/components/PhoneVerify.vue'
 import ReservationCard from '@/components/ReservationCard.vue'
 import { useBookingStore } from '@/stores/booking'
 import type { Reservation } from '@/types/api'
 
 const booking = useBookingStore()
 
-const formRef = ref<FormInstance>()
-// 剛訂完位的人來查詢時，帶入剛才的代號與手機省得再打一次
-const form = reactive({ code: booking.result?.code ?? '', phone: booking.phone })
-const rules: FormRules = {
-  code: [
-    { required: true, message: '請輸入訂位代號', trigger: 'blur' },
-    { pattern: /^[A-Za-z0-9]{8}$/, message: '訂位代號為 8 碼英數字', trigger: 'blur' },
-  ],
-  phone: [
-    { required: true, message: '請輸入手機號碼', trigger: 'blur' },
-    { pattern: /^09\d{8}$/, message: '請輸入正確的手機號碼（09 開頭共 10 碼）', trigger: 'blur' },
-  ],
-}
+/** 這一頁可以查任何一支手機：先填號碼、收簡訊驗證，通過之後列出該手機的所有訂位（不必記得訂位代號）。 */
+const phone = ref(booking.verifiedPhone || booking.phone)
+const reservations = ref<Reservation[]>([])
+const loading = ref(false)
+const cancelling = ref('')
 
-const reservation = ref<Reservation | null>(null)
-const searching = ref(false)
-const cancelling = ref(false)
-const errorText = ref('')
+const loggedIn = computed(() => booking.hasValidToken && booking.verifiedPhone !== '')
+const phoneLooksValid = computed(() => /^09\d{8}$/.test(phone.value))
 
-async function search(): Promise<void> {
-  if (!(await formRef.value?.validate().catch(() => false))) {
-    return
-  }
-
-  searching.value = true
-  errorText.value = ''
-  reservation.value = null
+async function load(): Promise<void> {
+  loading.value = true
   try {
-    const { data } = await http.post<Reservation>('/reservations/lookup', { code: form.code.trim(), phone: form.phone })
-    reservation.value = data
+    const { data } = await http.get<Reservation[]>('/my/reservations')
+    reservations.value = data
   } catch (error) {
-    errorText.value = errorMessage(error, '查詢失敗')
+    // 憑證過期時 http 層已清掉驗證狀態，畫面會自動回到驗證步驟
+    ElMessage.error(errorMessage(error, '載入訂位失敗'))
   } finally {
-    searching.value = false
+    loading.value = false
   }
 }
 
-async function cancel(): Promise<void> {
+async function cancel(reservation: Reservation): Promise<void> {
   try {
     await ElMessageBox.confirm('確定要取消這筆訂位嗎？取消後座位會釋出給其他人。', '取消訂位', {
       type: 'warning',
@@ -58,64 +43,106 @@ async function cancel(): Promise<void> {
     return
   }
 
-  cancelling.value = true
+  cancelling.value = reservation.code
   try {
-    const { data } = await http.post<Reservation>('/reservations/cancel', { code: form.code.trim(), phone: form.phone })
-    reservation.value = data
-    // 剛訂完的那筆被取消了，結果頁就不必再顯示
+    const { data } = await http.post<Reservation>('/reservations/cancel', { code: reservation.code })
+    Object.assign(reservation, data)
+    // 剛訂完的那筆被取消了，結果頁也要同步
     if (booking.result?.code === data.code) {
       booking.result = data
     }
     ElMessage.success('已取消訂位')
   } catch (error) {
-    // 已付訂金等情況後端會說明原因（需走退款流程），直接顯示給使用者
+    // 已付訂金時後端會說明需走退款流程，直接顯示給使用者
     ElMessage.error(errorMessage(error, '取消失敗'))
   } finally {
-    cancelling.value = false
+    cancelling.value = ''
   }
 }
 
+function switchPhone(): void {
+  booking.clearVerification()
+  reservations.value = []
+}
+
 const cancellable = (r: Reservation): boolean => r.status === 'confirmed' || r.status === 'pending_payment'
+
+watch(loggedIn, (value) => {
+  if (value) {
+    void load()
+  }
+})
+
+onMounted(() => {
+  if (loggedIn.value) {
+    void load()
+  }
+})
 </script>
 
 <template>
   <h2>我的訂位</h2>
 
-  <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="search">
-    <el-form-item label="訂位代號" prop="code">
-      <el-input v-model="form.code" maxlength="8" placeholder="訂位完成時取得的 8 碼代號" />
-    </el-form-item>
-    <el-form-item label="手機號碼" prop="phone">
-      <el-input v-model="form.phone" maxlength="10" inputmode="numeric" placeholder="訂位時填寫的手機號碼" />
-    </el-form-item>
-    <el-button type="primary" native-type="submit" :loading="searching">查詢</el-button>
-  </el-form>
+  <template v-if="!loggedIn">
+    <p class="hint">輸入訂位時使用的手機號碼，收到簡訊驗證碼後，就能看到這支手機的所有訂位。</p>
+    <el-form label-position="top" @submit.prevent>
+      <el-form-item label="手機號碼">
+        <el-input v-model="phone" maxlength="10" inputmode="numeric" placeholder="09xxxxxxxx" />
+      </el-form-item>
+    </el-form>
+    <PhoneVerify :phone="phone" />
+    <p v-if="phone && !phoneLooksValid" class="hint warn">請輸入正確的手機號碼（09 開頭共 10 碼）</p>
+  </template>
 
-  <el-alert v-if="errorText" :title="errorText" type="error" show-icon :closable="false" class="block" />
-
-  <div v-if="reservation" class="block">
-    <ReservationCard :reservation="reservation" />
-    <PayPanel
-      v-if="reservation.can_pay"
-      :key="`${reservation.code}-${reservation.hold_expires_at}`"
-      :reservation="reservation"
-      :phone="form.phone"
-      @refresh="search"
-      @expired="search"
-    />
-    <div v-if="cancellable(reservation)" class="actions">
-      <el-button type="danger" plain :loading="cancelling" @click="cancel">取消訂位</el-button>
+  <template v-else>
+    <div class="bar">
+      <span>手機 {{ booking.verifiedPhone }}</span>
+      <el-button link type="primary" @click="switchPhone">換一支手機</el-button>
     </div>
-  </div>
+
+    <div v-loading="loading" class="list">
+      <el-empty v-if="!loading && reservations.length === 0" description="這支手機目前沒有訂位" />
+
+      <div v-for="r in reservations" :key="r.code" class="item">
+        <ReservationCard :reservation="r" />
+        <PayPanel
+          v-if="r.can_pay"
+          :key="`${r.code}-${r.hold_expires_at}`"
+          :reservation="r"
+          :phone="booking.verifiedPhone"
+          @refresh="load"
+          @expired="load"
+        />
+        <div v-if="cancellable(r)" class="actions">
+          <el-button type="danger" plain :loading="cancelling === r.code" @click="cancel(r)">取消訂位</el-button>
+        </div>
+      </div>
+    </div>
+  </template>
 </template>
 
 <style scoped>
-.block {
-  margin-top: 24px;
+.hint {
+  color: #606266;
+  font-size: 14px;
+}
+.hint.warn {
+  color: #e6a23c;
+}
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.list {
+  display: grid;
+  gap: 24px;
+  min-height: 60px;
 }
 .actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 </style>

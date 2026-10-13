@@ -86,6 +86,7 @@ while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; d
 |---|---|---|
 | 預設（`single`） | `storage/logs/laravel.log` | 一般應用日誌 |
 | `payment` | `storage/logs/payment-YYYY-MM-DD.log` | 金流：通知原文、驗章失敗、冪等略過、晚到付款、對帳… |
+| `sms` | `storage/logs/sms-YYYY-MM-DD.log` | 簡訊：驗證碼要求與驗證結果、發送失敗與重試。手機只記末三碼，絕不記驗證碼；見 [sms.md](sms.md) |
 
 所有日誌行都帶 `request_id`（`AssignRequestId` middleware 以 `Log::shareContext` 注入）。
 

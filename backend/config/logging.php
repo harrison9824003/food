@@ -68,6 +68,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // 簡訊專用日誌：驗證碼的要求、驗證結果、發送失敗與重試。手機號碼只記末三碼，絕不記驗證碼。
+        'sms' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sms.log'),
+            'level' => env('SMS_LOG_LEVEL', 'debug'),
+            'days' => env('SMS_LOG_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

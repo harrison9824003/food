@@ -18,6 +18,10 @@ interface Draft {
   note: string
   /** 預點的餐點（選填、不計費） */
   cart: CartLine[]
+  /** 簡訊驗證憑證：證明這個瀏覽器分頁持有 verifiedPhone 這支手機（到期後失效，需重新驗證） */
+  phoneToken: string
+  phoneTokenExpiresAt: string
+  verifiedPhone: string
   /** 訂位成功後的結果，供結果頁顯示；重新整理後仍在 */
   result: Reservation | null
 }
@@ -36,6 +40,9 @@ function emptyDraft(): Draft {
     email: '',
     note: '',
     cart: [],
+    phoneToken: '',
+    phoneTokenExpiresAt: '',
+    verifiedPhone: '',
     result: null,
   }
 }
@@ -76,6 +83,26 @@ export const useBookingStore = defineStore('booking', () => {
   const hasContact = computed(() => hasSlot.value && draft.customerName.trim() !== '' && draft.phone !== '')
 
   const depositTotal = computed(() => draft.depositPerPerson * draft.partySize)
+
+  /** 憑證是否仍有效（前端只做提示；真正的判斷在伺服器，過期時伺服器會回 401 PHONE_NOT_VERIFIED）。 */
+  const hasValidToken = computed(
+    () => draft.phoneToken !== '' && Date.parse(draft.phoneTokenExpiresAt) > Date.now(),
+  )
+
+  /** 填寫的手機號碼是否就是已驗證的那一支。改了號碼就要重新驗證。 */
+  const phoneVerified = computed(() => hasValidToken.value && draft.verifiedPhone === draft.phone)
+
+  function setVerification(phone: string, token: string, expiresAt: string): void {
+    draft.verifiedPhone = phone
+    draft.phoneToken = token
+    draft.phoneTokenExpiresAt = expiresAt
+  }
+
+  function clearVerification(): void {
+    draft.verifiedPhone = ''
+    draft.phoneToken = ''
+    draft.phoneTokenExpiresAt = ''
+  }
 
   function selectStore(id: number, name: string, depositPerPerson: number): void {
     // 換門市：日期、時段都要重選；聯絡資料不必重填
@@ -128,8 +155,9 @@ export const useBookingStore = defineStore('booking', () => {
 
   /** 重新開始一筆新訂位；保留姓名與手機，下次不必再填。 */
   function startOver(): void {
-    const { customerName, phone, email } = draft
-    Object.assign(draft, emptyDraft(), { customerName, phone, email })
+    // 驗證憑證也保留：同一支手機再訂一筆不必重新收簡訊
+    const { customerName, phone, email, phoneToken, phoneTokenExpiresAt, verifiedPhone } = draft
+    Object.assign(draft, emptyDraft(), { customerName, phone, email, phoneToken, phoneTokenExpiresAt, verifiedPhone })
   }
 
   return {
@@ -139,6 +167,10 @@ export const useBookingStore = defineStore('booking', () => {
     hasSlot,
     hasContact,
     depositTotal,
+    hasValidToken,
+    phoneVerified,
+    setVerification,
+    clearVerification,
     selectStore,
     setDateAndParty,
     selectSlot,

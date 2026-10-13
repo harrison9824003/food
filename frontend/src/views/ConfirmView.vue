@@ -40,6 +40,13 @@ async function submit(): Promise<void> {
   } catch (error) {
     errorText.value = errorMessage(error, '訂位失敗')
     const code = errorCode(error)
+
+    // 驗證憑證過期（停在確認頁超過 15 分鐘）：回到聯絡資料重新驗證，其他資料都還在
+    if (code === 'PHONE_NOT_VERIFIED' || code === 'PHONE_MISMATCH') {
+      ElMessage.warning('手機驗證已失效，請重新驗證')
+      void router.replace({ name: 'info' })
+      return
+    }
     needsNewSlot.value = ['SLOT_FULL', 'NO_TABLE_AVAILABLE', 'CUTOFF_PASSED', 'DATE_CLOSED', 'OUT_OF_WINDOW'].includes(code ?? '')
     if (!needsNewSlot.value) {
       ElMessage.error(errorText.value)

@@ -4,7 +4,8 @@
 
 ## 顧客流程（前台）
 
-選門市 → 日期與人數 → 時段（顯示剩餘量）→ 聯絡資料 → 確認送出 → 結果頁；另有「我的訂位」以**訂位代號＋手機號碼**查詢與取消。
+選門市 → 日期與人數 → 時段（顯示剩餘量）→ 選餐 → **聯絡資料（含手機簡訊驗證）** → 確認送出 → 結果頁；
+另有「我的訂位」：驗證手機後列出這支手機的所有訂位，可取消、可付款。驗證機制見 [sms.md](sms.md)。
 
 - 多步驟表單的資料存在 Pinia，並同步到 `sessionStorage`：按上一步資料還在、重新整理不會壞，關掉分頁才清除
   （不用 `localStorage`，手機號碼不該在關閉瀏覽器後還留在這台裝置上）。
@@ -123,16 +124,20 @@ READ COMMITTED 每個敘述都讀最新已提交資料、沒有間隙鎖，符�
 | `GET /api/stores` | 120/分 | 啟用中的門市 |
 | `GET /api/stores/{id}/calendar` | 120/分 | 開放期間內每天是否營業（排除公休日） |
 | `GET /api/stores/{id}/availability?date=&party_size=` | 120/分 | 各時段 `remaining`、`bookable`、`reason` |
-| `POST /api/reservations` | 10/分 | 建立訂位 |
-| `POST /api/reservations/lookup` | 20/分 | `{ code, phone }` 查詢 |
-| `POST /api/reservations/cancel` | 20/分 | `{ code, phone }` 取消 |
-| `POST /api/reservations/pay` | 20/分 | `{ code, phone }` 建立付款，回傳要 POST 給綠界的表單（見 [payment.md](payment.md)） |
+| `POST /api/phone/send-code` | 每手機 5／小時、每 IP 20／小時 | 寄簡訊驗證碼（見 [sms.md](sms.md)） |
+| `POST /api/phone/verify` | 每 IP 30／10 分 | `{ phone, code }` → 憑證 |
+| `POST /api/reservations` | 10/分 | 建立訂位（需憑證） |
+| `GET /api/my/reservations` | 20/分 | 這支手機的所有訂位（需憑證） |
+| `POST /api/reservations/lookup` | 20/分 | `{ code }` 查詢（需憑證） |
+| `POST /api/reservations/cancel` | 20/分 | `{ code }` 取消（需憑證） |
+| `POST /api/reservations/pay` | 20/分 | `{ code }` 建立付款，回傳要 POST 給綠界的表單（需憑證；見 [payment.md](payment.md)） |
 | `GET /api/stores/{id}/menu` | 120/分 | 依分類分組的菜單，含說明、圖片、是否售完（供預點，見 [menu.md](menu.md)） |
 
-- 查詢與取消用 **POST body** 而不是網址，手機號碼才不會出現在 nginx access log 與瀏覽器歷史。
-- 代號與手機號碼任一不符都回同樣的 `404 RESERVATION_NOT_FOUND`，不洩漏「這個代號存在」；代號不分大小寫。
-- 訂位代號 8 碼，字元集去掉容易看錯的 `0/O/1/I`。
-- 簡訊驗證碼在里程碑 6 加入後，查詢與取消會改為以驗證碼證明持有該手機。
+- **身分靠簡訊驗證憑證**（標頭 `X-Phone-Token`，見 [sms.md](sms.md)）：訂位、查詢、取消、付款都需要；手機號碼由憑證決定，請求內容裡的不採信。
+  沒有憑證 → `401 PHONE_NOT_VERIFIED`；用別支手機的憑證去查 → `404 RESERVATION_NOT_FOUND`，不洩漏「這個代號存在」。
+- 訂位的手機號碼必須就是驗證的那一支（否則 `403 PHONE_MISMATCH`），通過驗證的訂位會記下 `phone_verified_at`。
+- 查詢與取消用 **POST body** 而不是網址；代號不分大小寫，8 碼字元集去掉容易看錯的 `0/O/1/I`。
+- 本機開發與既有測試可用寬鬆模式（`SMS_REQUIRE_VERIFICATION=false`，退回「代號＋手機號碼」），**正式環境一律嚴格**。
 
 `availability` 的 `bookable` 與實際下單共用同一份規則（`BookingRules`），所以「畫面說可以訂、送出卻被拒」的情況只會出現在
 真正的並發搶位上。它也會檢查桌位：名額夠，但剩下的桌子湊不出來（例如全是 4 人桌不可併桌卻來了 6 個人）也標為不可訂（`NO_TABLE_AVAILABLE`）。
@@ -145,7 +150,11 @@ READ COMMITTED 每個敘述都讀最新已提交資料、沒有間隙鎖，符�
 | HTTP | code | 情境 |
 |---|---|---|
 | 404 | `SLOT_NOT_FOUND` | 找不到時段 |
-| 404 | `RESERVATION_NOT_FOUND` | 代號與手機不符 |
+| 404 | `RESERVATION_NOT_FOUND` | 代號不存在，或不屬於憑證的手機 |
+| 401 | `PHONE_NOT_VERIFIED` | 沒有簡訊驗證憑證，或已過期 |
+| 403 | `PHONE_MISMATCH` | 憑證的手機與訂位填寫的不一致 |
+| 422 | `INVALID_CODE` | 驗證碼不正確或已過期 |
+| 429 | `SMS_COOLDOWN` / `CODE_ATTEMPTS_EXCEEDED` | 重送冷卻中／驗證碼錯誤次數用盡 |
 | 409 | `SLOT_FULL` | 名額不足 |
 | 409 | `NO_TABLE_AVAILABLE` | 沒有適合的桌位 |
 | 409 | `INVALID_STATUS_TRANSITION` | 目前狀態不能這樣變更 |

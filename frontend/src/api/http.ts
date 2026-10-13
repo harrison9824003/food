@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useBookingStore } from '@/stores/booking'
 import type { ApiErrorBody } from '@/types/api'
 
 export const http = axios.create({
@@ -7,9 +8,38 @@ export const http = axios.create({
   headers: { Accept: 'application/json' },
 })
 
+// 有簡訊驗證憑證就一律帶上：訂位、查詢、取消、付款都靠它證明持有手機
+http.interceptors.request.use((config) => {
+  const { phoneToken } = useBookingStore()
+  if (phoneToken) {
+    config.headers['X-Phone-Token'] = phoneToken
+  }
+  return config
+})
+
+http.interceptors.response.use(
+  (response) => response,
+  (error: unknown) => {
+    // 憑證過期或無效：清掉，畫面會自然回到「請先驗證手機」
+    if (errorCode(error) === 'PHONE_NOT_VERIFIED') {
+      useBookingStore().clearVerification()
+    }
+    return Promise.reject(error)
+  },
+)
+
 /** 取出後端的錯誤代碼（如 SLOT_FULL），沒有則回傳 null。 */
 export function errorCode(error: unknown): string | null {
   return axios.isAxiosError<ApiErrorBody>(error) ? (error.response?.data?.code ?? null) : null
+}
+
+/** 重送冷卻中時，後端會告訴還要等幾秒。 */
+export function retryAfterSeconds(error: unknown): number | null {
+  if (!axios.isAxiosError<ApiErrorBody & { errors: { retry_after?: number } }>(error)) {
+    return null
+  }
+  const value = error.response?.data?.errors?.retry_after
+  return typeof value === 'number' ? value : null
 }
 
 /** 取出給使用者看的錯誤訊息。 */

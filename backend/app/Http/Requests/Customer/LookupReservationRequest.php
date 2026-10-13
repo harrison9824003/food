@@ -23,7 +23,8 @@ class LookupReservationRequest extends FormRequest
     {
         return [
             'code' => ['required', 'string', 'regex:/^[A-Za-z0-9]{8}$/'],
-            'phone' => ['required', 'string', 'regex:/^09\d{8}$/'],
+            // 嚴格模式下手機號碼由簡訊驗證憑證決定、這個欄位不採信；寬鬆模式（本機開發與測試）才需要（見 PhoneAuth）
+            'phone' => ['sometimes', 'string', 'regex:/^09\d{8}$/'],
         ];
     }
 }

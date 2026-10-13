@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BookingSteps from '@/components/BookingSteps.vue'
+import PhoneVerify from '@/components/PhoneVerify.vue'
 import { useBookingStore } from '@/stores/booking'
 
 const booking = useBookingStore()
@@ -20,9 +22,14 @@ const rules: FormRules = {
 }
 
 async function next(): Promise<void> {
-  if (await formRef.value?.validate().catch(() => false)) {
-    void router.push({ name: 'confirm' })
+  if (!(await formRef.value?.validate().catch(() => false))) {
+    return
   }
+  if (!booking.phoneVerified) {
+    ElMessage.warning('請先完成手機驗證')
+    return
+  }
+  void router.push({ name: 'confirm' })
 }
 </script>
 
@@ -36,9 +43,17 @@ async function next(): Promise<void> {
       <el-input v-model="booking.customerName" maxlength="50" autocomplete="name" />
     </el-form-item>
     <el-form-item label="手機號碼" prop="phone">
-      <el-input v-model="booking.phone" maxlength="10" inputmode="numeric" autocomplete="tel" placeholder="09xxxxxxxx" />
+      <el-input v-model="booking.phone" maxlength="10" inputmode="numeric" autocomplete="tel" placeholder="09xxxxxxxx">
+        <template v-if="booking.phoneVerified" #suffix>
+          <el-tag type="success" size="small">已驗證</el-tag>
+        </template>
+      </el-input>
     </el-form-item>
-    <el-form-item label="Email（選填）" prop="email">
+
+    <!-- 改了手機號碼就不再是「已驗證」，要重新驗證 -->
+    <PhoneVerify v-if="!booking.phoneVerified" :phone="booking.phone" />
+
+    <el-form-item label="Email（選填）" prop="email" class="gap">
       <el-input v-model="booking.email" maxlength="255" autocomplete="email" />
     </el-form-item>
     <el-form-item label="備註（選填）">
@@ -48,11 +63,14 @@ async function next(): Promise<void> {
 
   <div class="actions">
     <el-button @click="router.push({ name: 'menu' })">上一步</el-button>
-    <el-button type="primary" @click="next">下一步</el-button>
+    <el-button type="primary" :disabled="!booking.phoneVerified" @click="next">下一步</el-button>
   </div>
 </template>
 
 <style scoped>
+.gap {
+  margin-top: 16px;
+}
 .actions {
   display: flex;
   justify-content: space-between;
