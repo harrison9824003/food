@@ -76,6 +76,11 @@ Sanctum **Bearer Token**：登入後取得 token，之後放在 `Authorization: 
 沿用門市設定的規則（`StorePolicy`）：總部全部門市、店長自己門市、店員唯讀；用 A 店的網址存取 B 店的分類、品項、圖片回 `404`。
 品項不提供刪除，只能下架（歷史訂位的預點內容與價格快照會參照它）。圖片上傳的安全設計見 [menu.md](menu.md)。
 
+## ERP 同步權限
+
+失敗清單與手動重送（`/api/admin/outbox-events`，見 [erp.md](erp.md)）：總部看全部門市、**店長只看與重送自己門市的事件**、**店員不可**（排錯與重送是管理動作）。
+實作於 `app/Policies/OutboxEventPolicy.php`；清單不外洩事件內容（含顧客手機）。已送出的事件不可重送（`409 ALREADY_SENT`）。
+
 ## 統一錯誤格式
 
 ```json
@@ -90,6 +95,7 @@ Sanctum **Bearer Token**：登入後取得 token，之後放在 `Authorization: 
 | 403 | `ACCOUNT_DISABLED` | 帳號已停用 |
 | 404 | `NOT_FOUND` | 找不到資源 |
 | 409 | `CLOSED_DATE_HAS_RESERVATIONS` | 設定公休日，但該日已有訂位 |
+| 409 | `ALREADY_SENT` | 重送的 ERP 事件已經成功送出 |
 | 409 | `SLOT_FULL` 等 | 訂位相關錯誤碼，見 [booking.md](booking.md) |
 | 409 | `CAPACITY_BELOW_BOOKED` | 時段名額調得比已訂人數還少 |
 | 422 | `VALIDATION_FAILED` | 驗證失敗，`errors` 為欄位錯誤 |

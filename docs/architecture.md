@@ -77,6 +77,7 @@ while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; d
 | `slots:generate` | 每天 00:10（`Asia/Taipei`） | 為啟用中的門市補上新進入開放期間的可訂時段，冪等；見 [store-settings.md](store-settings.md) |
 | `reservations:release-expired` | 每分鐘 | 釋放逾時未付款的暫時保留（到期 + 2 分鐘寬限），釋放前先向綠界對帳；見 [payment.md](payment.md) |
 | `payments:reconcile` | 每 5 分鐘 | 向綠界查詢漏接背景通知的付款並補單，與背景通知走同一套冪等處理 |
+| `outbox:dispatch` | 每分鐘 | 把 outbox 的訂位事件送去 ERP（冪等鍵、指數退避、依序、失敗清單）；見 [erp.md](erp.md) |
 
 三個排程都用 `withoutOverlapping()`（以 Redis 鎖避免上一輪還沒跑完又啟動下一輪）。
 
@@ -86,6 +87,7 @@ while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; d
 |---|---|---|
 | 預設（`single`） | `storage/logs/laravel.log` | 一般應用日誌 |
 | `payment` | `storage/logs/payment-YYYY-MM-DD.log` | 金流：通知原文、驗章失敗、冪等略過、晚到付款、對帳… |
+| `erp` | `storage/logs/erp-YYYY-MM-DD.log` | ERP 同步：每次投遞的結果、重試排程、放棄原因、手動重送。不含顧客個資；見 [erp.md](erp.md) |
 | `sms` | `storage/logs/sms-YYYY-MM-DD.log` | 簡訊：驗證碼要求與驗證結果、發送失敗與重試。手機只記末三碼，絕不記驗證碼；見 [sms.md](sms.md) |
 
 所有日誌行都帶 `request_id`（`AssignRequestId` middleware 以 `Log::shareContext` 注入）。

@@ -4,6 +4,7 @@ namespace App\Booking;
 
 use App\Enums\PaymentStatus;
 use App\Enums\ReservationStatus;
+use App\Erp\OutboxRecorder;
 use App\Exceptions\ApiException;
 use App\Models\Reservation;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,10 @@ use Illuminate\Support\Facades\Log;
  */
 class ReservationStatusService
 {
-    public function __construct(private readonly TableAllocator $tables) {}
+    public function __construct(
+        private readonly TableAllocator $tables,
+        private readonly OutboxRecorder $outbox,
+    ) {}
 
     /**
      * @throws ApiException
@@ -49,7 +53,11 @@ class ReservationStatusService
                 $this->release($current);
             }
 
+            $from = $current->status;
             $current->update(['status' => $to]);
+
+            // 狀態變更與通知 ERP 同進同退（Outbox Pattern）
+            $this->outbox->record($current, OutboxRecorder::STATUS_CHANGED, ['from' => $from->value, 'to' => $to->value]);
 
             return $current;
         });
@@ -61,11 +69,15 @@ class ReservationStatusService
      */
     public function confirmPayment(Reservation $reservation): void
     {
+        $from = $reservation->status;
+
         $reservation->update([
             'status' => ReservationStatus::Confirmed,
             'payment_status' => PaymentStatus::Paid,
             'hold_expires_at' => null,
         ]);
+
+        $this->outbox->record($reservation, OutboxRecorder::STATUS_CHANGED, ['from' => $from->value, 'to' => ReservationStatus::Confirmed->value]);
     }
 
     /**

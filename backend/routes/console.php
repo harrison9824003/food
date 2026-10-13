@@ -15,5 +15,8 @@ Schedule::command('slots:generate')->dailyAt('00:10')->withoutOverlapping();
 // 釋放逾時未付款的暫時保留（釋放前會先向綠界對帳）。每分鐘一次，名額最多晚一分鐘歸還。
 Schedule::command('reservations:release-expired')->everyMinute()->withoutOverlapping();
 
+// Outbox：把訂位事件送去 ERP。每分鐘一次；單次最多跑 50 秒，避免下一輪排程啟動時上一輪還在跑。
+Schedule::command('outbox:dispatch')->everyMinute()->withoutOverlapping();
+
 // 對帳補償：撿回因網路或當機而漏接的背景通知。
 Schedule::command('payments:reconcile')->everyFiveMinutes()->withoutOverlapping();

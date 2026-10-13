@@ -4,6 +4,7 @@ namespace App\Booking;
 
 use App\Enums\PaymentStatus;
 use App\Enums\ReservationStatus;
+use App\Erp\OutboxRecorder;
 use App\Exceptions\ApiException;
 use App\Models\MenuItem;
 use App\Models\Reservation;
@@ -20,6 +21,7 @@ class ReservationService
         private readonly BookingRules $rules,
         private readonly TableAllocator $tables,
         private readonly DeadlockRetrier $retrier,
+        private readonly OutboxRecorder $outbox,
     ) {}
 
     /**
@@ -150,6 +152,9 @@ class ReservationService
             }
             throw $e;
         }
+
+        // 與上面的名額、桌位、訂位寫在同一個交易：訂位成立，ERP 的通知就一定在；訂位回滾，通知也一起消失（Outbox Pattern）
+        $this->outbox->record($reservation, OutboxRecorder::CREATED);
 
         return $reservation;
     }

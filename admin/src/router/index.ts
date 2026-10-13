@@ -52,6 +52,12 @@ const router = createRouter({
           meta: { title: '門市設定' },
         },
         {
+          path: 'erp-sync',
+          name: 'erp-sync',
+          component: () => import('@/views/ErpSyncView.vue'),
+          meta: { title: 'ERP 同步', roles: ['hq_admin', 'store_manager'] },
+        },
+        {
           path: 'users',
           name: 'users',
           component: () => import('@/views/UsersView.vue'),

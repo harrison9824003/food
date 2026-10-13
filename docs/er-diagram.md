@@ -120,6 +120,7 @@ erDiagram
         bigint id PK
         string aggregate_type
         bigint aggregate_id
+        bigint store_id "後台依門市限縮；不設外鍵"
         string event_type
         json payload
         string status

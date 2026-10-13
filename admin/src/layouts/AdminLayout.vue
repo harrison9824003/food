@@ -28,6 +28,7 @@ async function logout(): Promise<void> {
         <el-menu-item index="/">總覽</el-menu-item>
         <el-menu-item index="/reservations">訂單</el-menu-item>
         <el-menu-item index="/stores">門市</el-menu-item>
+        <el-menu-item v-if="auth.canManageUsers" index="/erp-sync">ERP 同步</el-menu-item>
         <el-menu-item v-if="auth.canManageUsers" index="/users">帳號管理</el-menu-item>
       </el-menu>
     </el-aside>

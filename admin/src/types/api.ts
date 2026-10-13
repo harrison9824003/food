@@ -130,6 +130,32 @@ export const STATUS_OPTIONS: Array<{ value: ReservationStatus; label: string }> 
   { value: 'expired', label: '已逾時' },
 ]
 
+export interface OutboxEventRow {
+  id: number
+  event_type: string
+  aggregate_id: number
+  store_id: number | null
+  reservation_code: string | null
+  status: 'pending' | 'sent' | 'failed'
+  attempts: number
+  max_attempts: number
+  next_attempt_at: string | null
+  last_error: string | null
+  sent_at: string | null
+  created_at: string
+}
+
+export interface OutboxList {
+  counts: { pending: number; failed: number; sent: number }
+  events: OutboxEventRow[]
+  meta: { current_page: number; last_page: number; total: number; per_page: number }
+}
+
+export const EVENT_TYPE_LABELS: Record<string, string> = {
+  'reservation.created': '建立訂位',
+  'reservation.status_changed': '狀態變更',
+}
+
 export interface MenuImage {
   id: number
   url: string

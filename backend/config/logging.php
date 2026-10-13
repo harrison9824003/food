@@ -77,6 +77,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // ERP 同步專用日誌：每一次投遞的結果、重試排程、放棄原因。不含顧客個資（事件內容不寫進日誌）。
+        'erp' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/erp.log'),
+            'level' => env('ERP_LOG_LEVEL', 'debug'),
+            'days' => env('ERP_LOG_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
