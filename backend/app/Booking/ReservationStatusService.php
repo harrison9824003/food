@@ -22,11 +22,14 @@ class ReservationStatusService
     ) {}
 
     /**
+     * @param  bool  $refundHandled  呼叫端（CancellationService）已經處理過「已付訂金的取消」該退或沒收，
+     *                               所以略過下面的防護。其他任何地方取消已付款的訂位，仍會被擋下，避免收了錢卻沒人處理。
+     *
      * @throws ApiException
      */
-    public function transition(Reservation $reservation, ReservationStatus $to): Reservation
+    public function transition(Reservation $reservation, ReservationStatus $to, bool $refundHandled = false): Reservation
     {
-        return DB::transaction(function () use ($reservation, $to) {
+        return DB::transaction(function () use ($reservation, $to, $refundHandled) {
             // 鎖住這筆訂位再判斷：避免同時「顧客取消」與「店員標記已到」，或連點兩次取消，
             // 兩個請求都讀到舊狀態、各自通過檢查、結果名額被歸還兩次。
             $current = Reservation::query()->whereKey($reservation->id)->lockForUpdate()->firstOrFail();
@@ -44,8 +47,9 @@ class ReservationStatusService
                 );
             }
 
-            // 已付訂金的訂位取消要走退款流程（里程碑 6），在那之前不允許直接取消，避免收了錢卻沒退
-            if ($to === ReservationStatus::Cancelled && $current->payment_status === PaymentStatus::Paid) {
+            // 已付訂金的取消必須經過 CancellationService（依政策退款或沒收）。
+            // 這裡是最後一道防護：任何繞過它的路徑都會被擋下，避免收了錢、訂位取消了，卻沒有人處理那筆錢
+            if ($to === ReservationStatus::Cancelled && $current->payment_status === PaymentStatus::Paid && ! $refundHandled) {
                 throw new ApiException('此訂位已付訂金，取消需走退款流程', 'REFUND_REQUIRED', 409);
             }
 

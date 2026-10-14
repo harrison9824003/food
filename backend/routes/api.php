@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\StoreController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\MenuCategoryController;
 use App\Http\Controllers\Admin\OutboxEventController;
+use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\MenuItemController;
 use App\Http\Controllers\Admin\MenuItemImageController;
 use App\Http\Controllers\Customer\ReservationController as CustomerReservationController;
@@ -113,6 +114,12 @@ Route::prefix('admin')->group(function () {
         // ERP 同步：失敗清單與手動重送
         Route::get('outbox-events', [OutboxEventController::class, 'index']);
         Route::post('outbox-events/{outboxEvent}/retry', [OutboxEventController::class, 'retry']);
+
+        // 退款簽核
+        Route::get('refunds', [RefundController::class, 'index']);
+        Route::post('refunds/{refund}/approve', [RefundController::class, 'approve']);
+        Route::post('refunds/{refund}/reject', [RefundController::class, 'reject']);
+        Route::post('refunds/{refund}/retry', [RefundController::class, 'retry']);
 
         Route::get('reservations', [AdminReservationController::class, 'index']);
         Route::patch('reservations/{reservation}/status', [AdminReservationController::class, 'updateStatus']);

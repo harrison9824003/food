@@ -13,10 +13,12 @@ return [
         'test' => [
             'checkout' => 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5',
             'query' => 'https://payment-stage.ecpay.com.tw/Cashier/QueryTradeInfo/V5',
+            'refund' => 'https://payment-stage.ecpay.com.tw/CreditDetail/DoAction',
         ],
         'production' => [
             'checkout' => 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5',
             'query' => 'https://payment.ecpay.com.tw/Cashier/QueryTradeInfo/V5',
+            'refund' => 'https://payment.ecpay.com.tw/CreditDetail/DoAction',
         ],
     ],
 

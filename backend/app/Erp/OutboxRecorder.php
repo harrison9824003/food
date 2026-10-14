@@ -25,6 +25,9 @@ class OutboxRecorder
 
     public const STATUS_CHANGED = 'reservation.status_changed';
 
+    /** 退款申請、簽核、完成、失敗。放在同一張訂位的事件序列裡，ERP 才能依序看到「取消 → 退款申請 → 退款完成」。 */
+    public const REFUND_CHANGED = 'reservation.refund_changed';
+
     public function record(Reservation $reservation, string $eventType, array $extra = []): OutboxEvent
     {
         // 不在交易內呼叫，就失去「同進同退」的保證，是程式寫錯了，要在開發時就炸出來

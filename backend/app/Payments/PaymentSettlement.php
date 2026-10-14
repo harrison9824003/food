@@ -7,6 +7,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\ReservationStatus;
 use App\Models\Payment;
 use App\Models\Reservation;
+use App\Refunds\RefundService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +21,10 @@ use Illuminate\Support\Facades\Log;
  */
 class PaymentSettlement
 {
-    public function __construct(private readonly ReservationStatusService $statuses) {}
+    public function __construct(
+        private readonly ReservationStatusService $statuses,
+        private readonly RefundService $refunds,
+    ) {}
 
     /**
      * 付款成功。
@@ -156,7 +160,8 @@ class PaymentSettlement
     {
         // 這張訂位已經有另一筆付款成功了（例如顧客開了兩個分頁各付一次）：這筆是多收的
         if ($reservation->payment_status === PaymentStatus::Paid) {
-            return $this->needsRefund($payment, 'DUPLICATE_PAYMENT');
+            // 多收的是「第二筆」，訂位本身仍是已付款（第一筆是正常的），所以不去動訂位的付款狀態
+            return $this->needsRefund($reservation, $payment, 'DUPLICATE_PAYMENT', touchReservation: false);
         }
 
         switch ($reservation->status) {
@@ -172,15 +177,15 @@ class PaymentSettlement
                 }
                 $reservation->update(['payment_status' => PaymentStatus::Paid]);
 
-                return $this->needsRefund($payment, 'LATE_PAYMENT_SLOT_TAKEN');
+                return $this->needsRefund($reservation, $payment, 'LATE_PAYMENT_SLOT_TAKEN');
 
             case ReservationStatus::Cancelled:
                 $reservation->update(['payment_status' => PaymentStatus::Paid]);
 
-                return $this->needsRefund($payment, 'PAID_AFTER_CANCEL');
+                return $this->needsRefund($reservation, $payment, 'PAID_AFTER_CANCEL');
 
             default:
-                return $this->needsRefund($payment, 'UNEXPECTED_STATE');
+                return $this->needsRefund($reservation, $payment, 'UNEXPECTED_STATE');
         }
     }
 
@@ -198,9 +203,12 @@ class PaymentSettlement
         }
     }
 
-    private function needsRefund(Payment $payment, string $reason): SettlementOutcome
+    private function needsRefund(Reservation $reservation, Payment $payment, string $reason, bool $touchReservation = true): SettlementOutcome
     {
         $payment->fill(['needs_refund' => true, 'refund_reason' => $reason]);
+
+        // 錢已經收了、訂位又無法成立：自動建立退款申請，進入簽核流程，而不是只留一個旗標等人想起來
+        $this->refunds->request($reservation, $payment, $reason, 'system', touchReservation: $touchReservation);
 
         Log::channel('payment')->warning('payment received but reservation cannot be fulfilled, refund needed', [
             'merchant_trade_no' => $payment->merchant_trade_no, 'reason' => $reason,

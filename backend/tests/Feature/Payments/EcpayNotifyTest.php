@@ -192,11 +192,19 @@ class EcpayNotifyTest extends TestCase
 
         $this->assertFalse($first->fresh()->needs_refund);
         $second->refresh();
-        $this->assertSame(PaymentStatus::Paid, $second->status);
+        $this->assertSame(PaymentStatus::Refunding, $second->status, '錢收到了，已自動進入退款流程');
         $this->assertTrue($second->needs_refund);
         $this->assertSame('DUPLICATE_PAYMENT', $second->refund_reason);
         $this->assertSame(ReservationStatus::Confirmed, $reservation->fresh()->status);
+        $this->assertSame(PaymentStatus::Paid, $reservation->fresh()->payment_status, '訂位本身仍是已付款：第一筆是正常的，只有多收的第二筆要退');
         $this->assertSame(2, $this->slot->fresh()->booked);
+
+        $refund = \App\Models\Refund::sole();
+        $this->assertSame($second->id, $refund->payment_id);
+        $this->assertSame(400, $refund->amount);
+        $this->assertSame('DUPLICATE_PAYMENT', $refund->reason);
+        $this->assertSame('system', $refund->requested_by_type);
+        $this->assertSame(\App\Enums\RefundStatus::Requested, $refund->status);
     }
 
     // ── 晚到的付款（訂位已逾時釋放）──────────────────────────────────────
@@ -241,11 +249,13 @@ class EcpayNotifyTest extends TestCase
         $payment->refresh();
         $this->assertTrue($payment->needs_refund);
         $this->assertSame('LATE_PAYMENT_SLOT_TAKEN', $payment->refund_reason);
-        $this->assertSame(PaymentStatus::Paid, $payment->status, '錢確實收到了');
+        $this->assertSame(PaymentStatus::Refunding, $payment->status, '錢確實收到了，已自動進入退款流程');
         $reservation->refresh();
         $this->assertSame(ReservationStatus::Expired, $reservation->status, '訂位無法成立');
-        $this->assertSame(PaymentStatus::Paid, $reservation->payment_status);
+        $this->assertSame(PaymentStatus::Refunding, $reservation->payment_status);
         $this->assertSame(20, $this->slot->fresh()->booked, '不可超賣');
+
+        $this->assertSame('LATE_PAYMENT_SLOT_TAKEN', \App\Models\Refund::sole()->reason);
     }
 
     public function test_a_late_payment_rolls_back_the_capacity_it_took_when_no_table_is_free(): void

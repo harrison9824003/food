@@ -15,7 +15,7 @@ class ReservationFinder
     public function findForCustomer(string $code, string $phone): Reservation
     {
         return Reservation::query()
-            ->with(['store', 'slot', 'items'])
+            ->with(['store', 'slot', 'items', 'refunds'])
             ->where('code', strtoupper($code))
             ->where('phone', $phone)
             ->first()

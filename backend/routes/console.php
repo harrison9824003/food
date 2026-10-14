@@ -18,5 +18,8 @@ Schedule::command('reservations:release-expired')->everyMinute()->withoutOverlap
 // Outbox：把訂位事件送去 ERP。每分鐘一次；單次最多跑 50 秒，避免下一輪排程啟動時上一輪還在跑。
 Schedule::command('outbox:dispatch')->everyMinute()->withoutOverlapping();
 
+// 退款：補撿「已核准但還沒退成功」的（無法確認結果而排了重試的、佇列遺失的）。
+Schedule::command('refunds:process')->everyMinute()->withoutOverlapping();
+
 // 對帳補償：撿回因網路或當機而漏接的背景通知。
 Schedule::command('payments:reconcile')->everyFiveMinutes()->withoutOverlapping();

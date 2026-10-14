@@ -2,7 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\PaymentStatus;
 use App\Enums\ReservationStatus;
+use App\Refunds\CancellationPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -13,6 +15,22 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class ReservationResource extends JsonResource
 {
+    /** @return array{refundable: bool, deposit: int, free_cancellation_until: string}|null */
+    private function cancellationPreview(): ?array
+    {
+        if ($this->status !== ReservationStatus::Confirmed || $this->payment_status !== PaymentStatus::Paid) {
+            return null;
+        }
+
+        $decision = CancellationPolicy::decide($this->resource);
+
+        return [
+            'refundable' => $decision['refundable'],
+            'deposit' => $this->deposit_amount,
+            'free_cancellation_until' => $decision['free_cancellation_until']->toIso8601String(),
+        ];
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -30,6 +48,14 @@ class ReservationResource extends JsonResource
             'can_pay' => $this->status === ReservationStatus::PendingPayment
                 && $this->deposit_amount > 0
                 && $this->hold_expires_at?->isFuture() === true,
+            // 已付訂金、還沒用餐的訂位：取消會怎樣？讓顧客在按下取消「之前」就知道要退還是沒收
+            'cancellation' => $this->cancellationPreview(),
+            // 這張訂位最近一筆退款的進度
+            'refund' => $this->whenLoaded('refunds', fn () => ($r = $this->refunds->last()) ? [
+                'status' => $r->status->value,
+                'status_label' => $r->status->label(),
+                'amount' => $r->amount,
+            ] : null),
             'customer_name' => $this->customer_name,
             'party_size' => $this->party_size,
             'note' => $this->note,

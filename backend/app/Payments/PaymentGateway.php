@@ -32,6 +32,15 @@ interface PaymentGateway
     public function queryTrade(string $merchantTradeNo): TradeQueryResult;
 
     /**
+     * 退款（信用卡：對已付款的交易退回 $amount 元）。
+     *
+     * @return RefundResult 金流商的明確答覆（成功或拒絕）
+     *
+     * @throws PaymentGatewayException 沒拿到答覆（逾時、連線中斷、5xx）。結果未知：可能已經退了，也可能沒有
+     */
+    public function refund(Payment $payment, int $amount): RefundResult;
+
+    /**
      * 替一份通知內容簽章（本機付款模擬器用）。
      *
      * @param  array<string, scalar|null>  $payload

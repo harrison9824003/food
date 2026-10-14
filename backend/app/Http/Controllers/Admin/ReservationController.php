@@ -10,6 +10,7 @@ use App\Http\Requests\Admin\ReservationIndexRequest;
 use App\Http\Requests\Admin\UpdateReservationStatusRequest;
 use App\Http\Resources\AdminReservationResource;
 use App\Models\Reservation;
+use App\Refunds\CancellationService;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
 
@@ -23,7 +24,7 @@ class ReservationController extends Controller
         $filters = $request->validated();
 
         $reservations = Reservation::query()
-            ->with(['store', 'slot', 'tables', 'items', 'payments'])
+            ->with(['store', 'slot', 'tables', 'items', 'payments', 'refunds'])
             ->select('reservations.*')
             ->join('slots', 'slots.id', '=', 'reservations.slot_id')
             // 總部可用 ?store_id= 篩選；其他角色固定只看自己門市，即使帶了別間的 store_id 也無效
@@ -51,10 +52,19 @@ class ReservationController extends Controller
         return AdminReservationResource::collection($reservations);
     }
 
-    public function updateStatus(UpdateReservationStatusRequest $request, Reservation $reservation, ReservationStatusService $status): AdminReservationResource
-    {
-        $updated = $status->transition($reservation, ReservationStatus::from($request->validated('status')));
+    public function updateStatus(
+        UpdateReservationStatusRequest $request,
+        Reservation $reservation,
+        ReservationStatusService $status,
+        CancellationService $cancellation,
+    ): AdminReservationResource {
+        $to = ReservationStatus::from($request->validated('status'));
 
-        return new AdminReservationResource($updated->load(['store', 'slot', 'tables', 'items', 'payments']));
+        // 取消可能牽涉已付的訂金：由門市取消一律全額退款，建立退款申請並記下申請人（簽核必須由另一位主管）
+        $updated = $to === ReservationStatus::Cancelled
+            ? $cancellation->cancelByStore($reservation, $request->user())
+            : $status->transition($reservation, $to);
+
+        return new AdminReservationResource($updated->load(['store', 'slot', 'tables', 'items', 'payments', 'refunds']));
     }
 }

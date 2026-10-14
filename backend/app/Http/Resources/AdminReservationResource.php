@@ -39,6 +39,12 @@ class AdminReservationResource extends JsonResource
                 'confirmed_via' => $p->confirmed_via,
                 'paid_at' => $p->paid_at?->toIso8601String(),
             ])->values()),
+            'refund' => $this->whenLoaded('refunds', fn () => ($r = $this->refunds->last()) ? [
+                'id' => $r->id,
+                'status' => $r->status->value,
+                'status_label' => $r->status->label(),
+                'amount' => $r->amount,
+            ] : null),
             'customer_name' => $this->customer_name,
             'phone' => $this->phone,
             'email' => $this->email,

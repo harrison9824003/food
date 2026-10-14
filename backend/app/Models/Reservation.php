@@ -61,6 +61,11 @@ class Reservation extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(Refund::class)->orderBy('id');
+    }
+
     /** 預點的餐點（不計費，僅供門市備餐參考）。 */
     public function items(): HasMany
     {

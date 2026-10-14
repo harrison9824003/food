@@ -106,12 +106,19 @@ class CancellationTest extends TestCase
         $this->cancel($reservation, code: strtolower($reservation->code))->assertOk();
     }
 
-    public function test_paid_reservation_cannot_be_cancelled_without_a_refund(): void
+    public function test_the_status_service_still_refuses_to_cancel_a_paid_reservation_on_its_own(): void
     {
+        // 已付訂金的取消必須經過 CancellationService（依政策退款或沒收，見 Refunds/）。
+        // ReservationStatusService 本身仍保留最後一道防護：任何繞過它的路徑都會被擋下，不會收了錢卻沒人處理
         $reservation = $this->makeReservation();
         $reservation->update(['payment_status' => PaymentStatus::Paid]);
 
-        $this->cancel($reservation)->assertStatus(409)->assertJsonPath('code', 'REFUND_REQUIRED');
+        try {
+            app(\App\Booking\ReservationStatusService::class)->transition($reservation, ReservationStatus::Cancelled);
+            $this->fail('應該被擋下');
+        } catch (\App\Exceptions\ApiException $e) {
+            $this->assertSame('REFUND_REQUIRED', $e->errorCode);
+        }
 
         $this->assertSame(ReservationStatus::Confirmed, $reservation->fresh()->status);
         $this->assertSame(2, $this->slot->fresh()->booked);

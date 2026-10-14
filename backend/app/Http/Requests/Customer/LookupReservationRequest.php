@@ -25,6 +25,8 @@ class LookupReservationRequest extends FormRequest
             'code' => ['required', 'string', 'regex:/^[A-Za-z0-9]{8}$/'],
             // 嚴格模式下手機號碼由簡訊驗證憑證決定、這個欄位不採信；寬鬆模式（本機開發與測試）才需要（見 PhoneAuth）
             'phone' => ['sometimes', 'string', 'regex:/^09\d{8}$/'],
+            // 超過免費取消期限、取消會沒收訂金時，顧客必須明確同意（見 CancellationService）
+            'acknowledge_forfeit' => ['sometimes', 'boolean'],
         ];
     }
 }

@@ -4,14 +4,13 @@ namespace App\Http\Controllers\Customer;
 
 use App\Booking\ReservationFinder;
 use App\Booking\ReservationService;
-use App\Booking\ReservationStatusService;
-use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\CreateReservationRequest;
 use App\Http\Requests\Customer\LookupReservationRequest;
 use App\Http\Resources\ReservationResource;
 use App\Models\Reservation;
 use App\Payments\PaymentService;
+use App\Refunds\CancellationService;
 use App\Sms\PhoneAuth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,7 +41,7 @@ class ReservationController extends Controller
         $phone = $this->auth->phone($request, is_string($claimed) ? $claimed : null);
 
         $reservations = Reservation::query()
-            ->with(['store', 'slot', 'items'])
+            ->with(['store', 'slot', 'items', 'refunds'])
             ->select('reservations.*')
             ->join('slots', 'slots.id', '=', 'reservations.slot_id')
             ->where('reservations.phone', $phone)
@@ -58,11 +57,13 @@ class ReservationController extends Controller
         return new ReservationResource($finder->findForCustomer($request->validated('code'), $this->phone($request)));
     }
 
-    public function cancel(LookupReservationRequest $request, ReservationFinder $finder, ReservationStatusService $status): ReservationResource
+    public function cancel(LookupReservationRequest $request, ReservationFinder $finder, CancellationService $cancellation): ReservationResource
     {
         $reservation = $finder->findForCustomer($request->validated('code'), $this->phone($request));
 
-        return new ReservationResource($status->transition($reservation, ReservationStatus::Cancelled)->load(['store', 'slot', 'items']));
+        $cancelled = $cancellation->cancelByCustomer($reservation, (bool) $request->validated('acknowledge_forfeit', false));
+
+        return new ReservationResource($cancelled->load(['store', 'slot', 'items', 'refunds']));
     }
 
     /** 建立付款，回傳要由瀏覽器 POST 給綠界的表單。 */

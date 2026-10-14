@@ -79,6 +79,50 @@ class EcpayGateway implements PaymentGateway
         );
     }
 
+    /**
+     * 綠界「信用卡請退款」API（CreditDetail/DoAction），Action=R（退刷）。
+     *
+     * 已對綠界測試環境驗證的部分：端點、欄位、簽章被接受（簽章正確 → 回「訂單不存在」；簽章錯誤 → CheckMacValue Error）。
+     * ⚠️ 沒驗證過的部分：對「真的刷過卡且已關帳的交易」退款成功的完整路徑——需要一筆真實的測試交易，沒辦法自動化。
+     * 另外綠界規定交易要「已關帳」才能 R（未關帳要用 E 取消授權）；這裡沒有處理未關帳的情況，會得到綠界的拒絕訊息並進入失敗清單由人工處理。
+     */
+    public function refund(Payment $payment, int $amount): RefundResult
+    {
+        if ($payment->ecpay_trade_no === null) {
+            // 沒有綠界交易編號代表我們根本沒收到過付款成功的通知，不可能退款；這是我們自己的資料問題，不是「結果未知」
+            return new RefundResult(false, '缺少綠界交易編號，無法退款');
+        }
+
+        $params = [
+            'MerchantID' => $this->merchantId(),
+            'MerchantTradeNo' => $payment->merchant_trade_no,
+            'TradeNo' => $payment->ecpay_trade_no,
+            'Action' => 'R',
+            'TotalAmount' => (string) $amount,
+        ];
+        $params['CheckMacValue'] = $this->sign($params);
+
+        try {
+            // 不自動重試（retry）：退款是「改變金錢」的動作，逾時後重送可能退兩次。要不要再試由呼叫端依狀態決定
+            $response = Http::asForm()->timeout((int) config('refund.timeout'))->post($this->endpoint('refund'), $params);
+        } catch (ConnectionException $e) {
+            throw new PaymentGatewayException('退款請求沒有得到回應：'.$e->getMessage(), 0, $e);
+        }
+
+        if ($response->serverError()) {
+            throw new PaymentGatewayException("綠界退款回應異常（HTTP {$response->status()}），結果未知");
+        }
+
+        parse_str($response->body(), $data);
+
+        // 拿到了綠界的答覆（HTTP 200 + RtnCode）：1 = 成功，其餘都是明確的拒絕（含「訂單不存在」「已退款」「尚未關帳」…）
+        if (! isset($data['RtnCode'])) {
+            throw new PaymentGatewayException('綠界退款回應格式無法辨識，結果未知');
+        }
+
+        return new RefundResult(($data['RtnCode'] ?? null) === '1', (string) ($data['RtnMsg'] ?? ''));
+    }
+
     public function signCallback(array $payload): array
     {
         $payload['CheckMacValue'] = $this->sign($payload);
