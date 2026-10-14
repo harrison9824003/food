@@ -52,6 +52,12 @@ const router = createRouter({
           meta: { title: '門市設定' },
         },
         {
+          path: 'refunds',
+          name: 'refunds',
+          component: () => import('@/views/RefundsView.vue'),
+          meta: { title: '退款簽核', roles: ['hq_admin', 'store_manager'] },
+        },
+        {
           path: 'erp-sync',
           name: 'erp-sync',
           component: () => import('@/views/ErpSyncView.vue'),

@@ -81,6 +81,11 @@ Sanctum **Bearer Token**：登入後取得 token，之後放在 `Authorization: 
 失敗清單與手動重送（`/api/admin/outbox-events`，見 [erp.md](erp.md)）：總部看全部門市、**店長只看與重送自己門市的事件**、**店員不可**（排錯與重送是管理動作）。
 實作於 `app/Policies/OutboxEventPolicy.php`；清單不外洩事件內容（含顧客手機）。已送出的事件不可重送（`409 ALREADY_SENT`）。
 
+## 退款簽核權限
+
+退款清單與核准、駁回、重試（`/api/admin/refunds`，見 [refund.md](refund.md)）：總部看全部門市、**店長只處理自己門市的退款**、**店員不可**。
+另有職責分離：**自己申請的退款不能自己核准**（`403 SELF_APPROVAL`）。實作於 `app/Policies/RefundPolicy.php`；清單不外洩顧客手機。
+
 ## 統一錯誤格式
 
 ```json
@@ -96,6 +101,9 @@ Sanctum **Bearer Token**：登入後取得 token，之後放在 `Authorization: 
 | 404 | `NOT_FOUND` | 找不到資源 |
 | 409 | `CLOSED_DATE_HAS_RESERVATIONS` | 設定公休日，但該日已有訂位 |
 | 409 | `ALREADY_SENT` | 重送的 ERP 事件已經成功送出 |
+| 403 | `SELF_APPROVAL` | 核准自己申請的退款 |
+| 409 | `INVALID_REFUND_STATE` | 退款狀態不允許此操作（例如重試未失敗的退款） |
+| 409 | `FORFEIT_CONFIRMATION_REQUIRED` | 用餐前 24 小時內取消，需顧客確認訂金不退 |
 | 409 | `SLOT_FULL` 等 | 訂位相關錯誤碼，見 [booking.md](booking.md) |
 | 409 | `CAPACITY_BELOW_BOOKED` | 時段名額調得比已訂人數還少 |
 | 422 | `VALIDATION_FAILED` | 驗證失敗，`errors` 為欄位錯誤 |

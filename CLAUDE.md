@@ -92,7 +92,7 @@ docker-compose.yml
 3. [x] 門市管理、桌位、時段、開放規則設定（後台）；後台帳號管理表單（設計與規則見 `docs/store-settings.md`）
 4. [x] 前台訂位流程 + 防超賣 + k6 壓測（展示點 A）；後台訂單列表與狀態變更（設計見 `docs/booking.md`、壓測結果見 `docs/loadtest.md`；選餐延到里程碑 5）
 5. [x] 綠界金流、暫時保留與逾時釋放、冪等回呼（展示點 B）；選餐（預點不計費）；菜單分類、說明、今日售完、多張圖片與安全上傳（設計與驗證見 `docs/payment.md`、`docs/menu.md`）
-6. [ ] 簡訊驗證碼、mock-erp、Outbox、退款流程（展示點 C）
+6. [x] 簡訊驗證碼、mock-erp、Outbox、退款流程（展示點 C）；設計與驗證見 `docs/sms.md`、`docs/erp.md`、`docs/refund.md`
 7. [ ] 部署到 Linux、日誌、故障排除手冊、門市操作說明
 8. [ ] 補測試、README、Demo 影片
 

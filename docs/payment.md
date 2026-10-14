@@ -56,7 +56,7 @@ POST /api/reservations/pay          建立一筆 payments（pending），回傳�
 | 顧客取消之後才付款 | `needs_refund`，`PAID_AFTER_CANCEL` |
 | 這張訂位已經付過一筆（顧客開了兩個分頁各付一次） | 後到的一筆 `needs_refund`，`DUPLICATE_PAYMENT`，訂位不重複確認 |
 
-`needs_refund` 的付款目前只是標示：後台訂單列表會顯示紅色「待退款」並可以篩選；**實際退款流程在里程碑 6**。
+`needs_refund` 的付款會自動建立退款申請（`requested_by_type = system`），進入簽核流程，見 `docs/refund.md`；後台訂單列表同時顯示紅色「待退款」並可篩選。
 
 ## 逾時釋放與對帳補償
 
@@ -174,7 +174,7 @@ docker compose exec php-fpm sh -c "grep F123T storage/logs/payment-*.log"
 - 只接了信用卡（一次付清）；ATM、超商代碼等需要 `PaymentInfoURL` 等額外流程，未實作。
 - 每次按「前往付款」都建立新的付款（新的商店交易編號），因為綠界不接受重複的編號。
   前一筆其實付成功時，後到的會被標為重複付款待退款，而不是重複確認。
-- 退款流程（申請 → 簽核 → 呼叫退款 API → 回寫）在里程碑 6；在那之前，已付訂金的訂位取消會回 `409 REFUND_REQUIRED`。
+- 退款流程（申請 → 簽核 → 呼叫退款 API → 回寫）見 `docs/refund.md`。
 - 沒有實際用公開網址接過綠界的背景通知（見上）。
 
 ## 測試

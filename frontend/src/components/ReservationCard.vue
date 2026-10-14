@@ -16,6 +16,26 @@ const tagType = computed(() => {
       return 'info'
   }
 })
+
+const refundTagType = computed(() => {
+  switch (props.reservation.refund?.status) {
+    case 'completed':
+      return 'success'
+    case 'failed':
+    case 'rejected':
+      return 'danger'
+    default:
+      return 'warning'
+  }
+})
+
+const untilText = computed(() => {
+  const iso = props.reservation.cancellation?.free_cancellation_until
+  if (!iso) return ''
+  const d = new Date(iso)
+  const p = (n: number): string => String(n).padStart(2, '0')
+  return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`
+})
 </script>
 
 <template>
@@ -42,6 +62,17 @@ const tagType = computed(() => {
       </template>
       <template v-else>免訂金</template>
     </el-descriptions-item>
+    <el-descriptions-item v-if="reservation.refund" label="退款">
+      <el-tag :type="refundTagType" size="small">{{ reservation.refund.status_label }}</el-tag>
+      ${{ reservation.refund.amount }}
+      <div v-if="reservation.refund.status === 'failed'" class="sub">退款遇到問題，門市會協助處理，請留意來電</div>
+    </el-descriptions-item>
+    <el-descriptions-item v-if="reservation.cancellation" label="取消規則">
+      <template v-if="reservation.cancellation.refundable">
+        {{ untilText }} 前取消，訂金 ${{ reservation.cancellation.deposit }} 全額退還
+      </template>
+      <span v-else class="warn">已過免費取消期限，此時取消訂金 ${{ reservation.cancellation.deposit }} 不退還</span>
+    </el-descriptions-item>
     <el-descriptions-item v-if="reservation.items?.length" label="預點餐點">
       <div v-for="item in reservation.items" :key="item.name">{{ item.name }} × {{ item.quantity }}</div>
       <div class="sub">預點不計費，用餐時結帳</div>
@@ -58,6 +89,9 @@ const tagType = computed(() => {
   color: #909399;
   font-size: 12px;
   margin-top: 2px;
+}
+.warn {
+  color: #e6a23c;
 }
 .pay-tag {
   margin-left: 8px;

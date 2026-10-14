@@ -106,8 +106,15 @@ erDiagram
         bigint id PK
         bigint payment_id FK
         bigint reservation_id FK
-        string status
+        bigint store_id "後台依門市限縮；不設外鍵"
+        bigint active_payment_id UK "有效退款才有值：同一筆付款同時只能一筆（防重複退款）"
+        string reason
+        string requested_by_type "customer / staff / system"
+        string status "requested / approved / failed / completed / rejected"
         bigint approved_by FK
+        tinyint attempts
+        timestamp next_attempt_at
+        timestamp completed_at
     }
     sms_verifications {
         string phone

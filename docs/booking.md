@@ -112,7 +112,7 @@ READ COMMITTED 每個敘述都讀最新已提交資料、沒有間隙鎖，符�
 - **歸還名額**：`UPDATE slots SET booked = booked - ? WHERE id = ? AND booked >= ?`。`booked` 是 UNSIGNED，扣成負數會直接報錯，所以加條件；
   若帳對不上（affected = 0）寫 error 日誌而不是讓取消失敗。
 - **刪除 `reservation_tables`**：否則 `UNIQUE(table_id, slot_id)` 會讓這些桌子永遠無法再被訂。
-- 已付訂金的訂位取消回 `409 REFUND_REQUIRED`（退款流程在里程碑 6）。
+- 已付訂金的訂位取消會依取消政策產生退款申請（見 `docs/refund.md`）；`409 REFUND_REQUIRED` 只留給「直接改狀態卻沒走退款」的防呆。
 - 「未到」也會歸還名額與桌位，與 `ReservationStatus::holdsCapacity()` 一致。
 
 ## 顧客端 API
@@ -158,7 +158,8 @@ READ COMMITTED 每個敘述都讀最新已提交資料、沒有間隙鎖，符�
 | 409 | `SLOT_FULL` | 名額不足 |
 | 409 | `NO_TABLE_AVAILABLE` | 沒有適合的桌位 |
 | 409 | `INVALID_STATUS_TRANSITION` | 目前狀態不能這樣變更 |
-| 409 | `REFUND_REQUIRED` | 已付訂金，取消需走退款流程 |
+| 409 | `REFUND_REQUIRED` | 防呆：已付訂金卻沒經過退款流程就要取消 |
+| 409 | `FORFEIT_CONFIRMATION_REQUIRED` | 用餐前 24 小時內取消，訂金不退，需顧客確認 |
 | 409 | `NOT_PAYABLE` | 這筆訂位目前不需要（或不能）付款 |
 | 409 | `HOLD_EXPIRED` | 保留時間已過，不能再付款 |
 | 422 | `INVALID_MENU_ITEM` | 預點的餐點不屬於該門市、已下架或在停用的分類下 |

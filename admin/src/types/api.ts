@@ -99,6 +99,7 @@ export interface AdminReservation {
   deposit_amount: number
   /** 錢已收到但訂位無法成立（晚到付款、重複付款…），等退款流程處理 */
   needs_refund?: boolean
+  refund?: { id: number; status: string; status_label: string; amount: number } | null
   payments?: Array<{
     merchant_trade_no: string
     status: string
@@ -214,3 +215,33 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 }
 
 export const WEEKDAY_LABELS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'] as const
+
+export interface RefundRow {
+  id: number
+  status: 'requested' | 'approved' | 'failed' | 'completed' | 'rejected'
+  status_label: string
+  amount: number
+  reason: string
+  reason_label: string
+  store_id: number
+  reservation_code: string
+  customer_name: string
+  dining_at: string
+  merchant_trade_no: string
+  requested_by: string
+  requested_by_me: boolean
+  decided_by: string | null
+  decided_at: string | null
+  reject_reason: string | null
+  failure_reason: string | null
+  attempts: number
+  next_attempt_at: string | null
+  completed_at: string | null
+  created_at: string | null
+}
+
+export interface RefundList {
+  counts: Record<'requested' | 'approved' | 'failed' | 'completed' | 'rejected', number>
+  refunds: RefundRow[]
+  meta: { current_page: number; last_page: number; total: number; per_page: number }
+}

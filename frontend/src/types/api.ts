@@ -91,6 +91,10 @@ export interface Reservation {
   /** 伺服器的現在時間，倒數計時以它為準，不用手機的時鐘 */
   server_time: string
   can_pay: boolean
+  /** 已付訂金且尚未用餐時才有：取消會退款還是沒收，按下取消之前就要讓顧客知道 */
+  cancellation?: { refundable: boolean; deposit: number; free_cancellation_until: string } | null
+  /** 這張訂位最近一筆退款的進度 */
+  refund?: { status: string; status_label: string; amount: number } | null
   items?: Array<{ name: string; quantity: number; unit_price: number }>
   customer_name: string
   party_size: number

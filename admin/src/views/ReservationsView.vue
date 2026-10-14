@@ -173,6 +173,10 @@ onMounted(async () => {
             </template>
             <el-tag type="danger" size="small" class="refund-tag">待退款</el-tag>
           </el-tooltip>
+          <!-- 退款進度：細節與簽核在「退款簽核」頁 -->
+          <el-tag v-if="row.refund" size="small" class="refund-tag" :type="row.refund.status === 'completed' ? 'success' : row.refund.status === 'failed' ? 'danger' : 'warning'">
+            退款{{ row.refund.status_label }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="預點" min-width="140">

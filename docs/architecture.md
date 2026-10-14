@@ -75,6 +75,7 @@ while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; d
 | 排程 | 時間 | 說明 |
 |---|---|---|
 | `slots:generate` | 每天 00:10（`Asia/Taipei`） | 為啟用中的門市補上新進入開放期間的可訂時段，冪等；見 [store-settings.md](store-settings.md) |
+| `refunds:process` | 每分鐘 | 執行已核准的退款：撿回佇列遺失的、到了重試時間的；見 [refund.md](refund.md) |
 | `reservations:release-expired` | 每分鐘 | 釋放逾時未付款的暫時保留（到期 + 2 分鐘寬限），釋放前先向綠界對帳；見 [payment.md](payment.md) |
 | `payments:reconcile` | 每 5 分鐘 | 向綠界查詢漏接背景通知的付款並補單，與背景通知走同一套冪等處理 |
 | `outbox:dispatch` | 每分鐘 | 把 outbox 的訂位事件送去 ERP（冪等鍵、指數退避、依序、失敗清單）；見 [erp.md](erp.md) |

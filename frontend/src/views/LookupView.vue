@@ -33,10 +33,18 @@ async function load(): Promise<void> {
 }
 
 async function cancel(reservation: Reservation): Promise<void> {
+  // 已付訂金：按下取消之前就把結果說清楚——退還或沒收。沒收要顧客明確勾認，不能默默扣錢。
+  const policy = reservation.cancellation
+  const forfeit = policy != null && !policy.refundable
+  const message = !policy
+    ? '確定要取消這筆訂位嗎？取消後座位會釋出給其他人。'
+    : forfeit
+      ? `已超過免費取消期限，取消後訂金 $${policy.deposit} 將不予退還。確定要取消嗎？`
+      : `確定要取消這筆訂位嗎？訂金 $${policy.deposit} 會全額退還，退款需經門市簽核。`
   try {
-    await ElMessageBox.confirm('確定要取消這筆訂位嗎？取消後座位會釋出給其他人。', '取消訂位', {
+    await ElMessageBox.confirm(message, forfeit ? '取消訂位（訂金不退）' : '取消訂位', {
       type: 'warning',
-      confirmButtonText: '確定取消',
+      confirmButtonText: forfeit ? '我了解，仍要取消' : '確定取消',
       cancelButtonText: '返回',
     })
   } catch {
@@ -45,16 +53,27 @@ async function cancel(reservation: Reservation): Promise<void> {
 
   cancelling.value = reservation.code
   try {
-    const { data } = await http.post<Reservation>('/reservations/cancel', { code: reservation.code })
+    // 前一步已讓顧客確認過，所以這裡才帶 acknowledge_forfeit；伺服器端會用「送出當下」的時間重算，
+    // 若確認視窗開著的期間剛好越過期限，伺服器會回 409 要求重新確認，而不是照舊畫面扣錢。
+    const { data } = await http.post<Reservation>('/reservations/cancel', {
+      code: reservation.code,
+      ...(forfeit ? { acknowledge_forfeit: true } : {}),
+    })
     Object.assign(reservation, data)
     // 剛訂完的那筆被取消了，結果頁也要同步
     if (booking.result?.code === data.code) {
       booking.result = data
     }
-    ElMessage.success('已取消訂位')
+    ElMessage.success(data.refund ? '已取消訂位，退款申請已送出' : '已取消訂位')
   } catch (error) {
-    // 已付訂金時後端會說明需走退款流程，直接顯示給使用者
-    ElMessage.error(errorMessage(error, '取消失敗'))
+    const code = (error as { response?: { data?: { code?: string } } }).response?.data?.code
+    if (code === 'FORFEIT_CONFIRMATION_REQUIRED') {
+      // 確認視窗開著時剛好過了期限：重新載入，讓畫面顯示最新規則，再請顧客重新確認
+      ElMessage.warning('取消規則已變動，請確認後再操作')
+      await load()
+    } else {
+      ElMessage.error(errorMessage(error, '取消失敗'))
+    }
   } finally {
     cancelling.value = ''
   }
